@@ -6,6 +6,7 @@ const fs = require('fs');
 const Customer = require('../models/Customer');
 const { processDocument } = require('../services/documentService');
 const { extractDocumentData } = require('../services/extractionService');
+const Analysis = require('../models/Analysis');
 
 // Setup multer for temporary uploads
 const uploadDir = path.join(__dirname, '../uploads');
@@ -96,7 +97,7 @@ router.post('/', upload.single('document'), async (req, res) => {
       }
     }
 
-    return res.json({
+    const finalResult = {
       success: true,
       document: {
         fileName: req.file.originalname,
@@ -106,7 +107,28 @@ router.post('/', upload.single('document'), async (req, res) => {
       customerMatch,
       extractedData: extractionResult.extractedData,
       summary: extractionResult.summary
-    });
+    };
+
+    // Save Analysis History
+    try {
+      await Analysis.create({
+        analysisType: 'G3_DOCUMENT_SUMMARY',
+        customerId: customerId || 'UNKNOWN',
+        customerName: extractionResult.extractedData.customerName || 'Unknown',
+        status: 'COMPLETED',
+        summary: `Document processed: ${req.file.originalname}`,
+        result: {
+          document: finalResult.document,
+          customerMatch,
+          extractedData: finalResult.extractedData,
+          summary: finalResult.summary
+        }
+      });
+    } catch (e) {
+      console.error("Failed to save G3 analysis history", e);
+    }
+
+    return res.json(finalResult);
   } catch (error) {
     console.error("G3 Route Error:", error);
     // Attempt cleanup if crashed unexpectedly

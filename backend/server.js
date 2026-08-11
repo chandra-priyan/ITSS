@@ -17,6 +17,7 @@ const aiRoutes = require('./routes/ai');
 const g2Routes = require('./routes/g2');
 const g3Routes = require('./routes/g3');
 const g4Routes = require('./routes/g4');
+const historyRoutes = require('./routes/history');
 
 app.use('/api/customers', customerRoutes);
 app.use('/api/customer360', customer360Routes);
@@ -24,6 +25,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/ai/g2', g2Routes);
 app.use('/api/ai/g3', g3Routes);
 app.use('/api/ai/g4', g4Routes);
+app.use('/api/history', historyRoutes);
 
 app.get('/', (req, res) => {
   res.send('API is running...');

@@ -53,16 +53,23 @@ router.post('/g1/:customerId', async (req, res) => {
       });
     }
 
-    // Save Analysis History if it doesn't break things (Phase 11 preview)
+    // Save Analysis History
     try {
       await Analysis.create({
-        customer_id: customerId,
-        module: 'G1',
-        result: risk.level,
-        details: { riskScore: risk.score, financialFacts, aiBrief }
+        analysisType: 'G1_CREDIT_EXPOSURE',
+        customerId: customer.customer_id,
+        customerName: customer.name_1,
+        status: 'COMPLETED',
+        summary: aiBrief.summary || `Credit exposure risk is ${risk.level}`,
+        result: {
+          riskLevel: risk.level,
+          riskScore: risk.score,
+          financialFacts,
+          aiBrief
+        }
       });
     } catch (e) {
-      console.error("Failed to save analysis history", e);
+      console.error("Failed to save G1 analysis history", e);
     }
 
     res.json({

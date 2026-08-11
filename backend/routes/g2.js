@@ -4,6 +4,7 @@ const Customer = require('../models/Customer');
 const Loan = require('../models/Loan');
 const { retrieveRelevantContext } = require('../services/ragService');
 const { generateCounsellingPrep } = require('../services/aiService');
+const Analysis = require('../models/Analysis');
 
 router.post('/:customerId', async (req, res) => {
   try {
@@ -48,6 +49,23 @@ router.post('/:customerId', async (req, res) => {
 
     try {
       const g2Response = await generateCounsellingPrep(customerFacts, ragContext);
+      
+      // Save Analysis History
+      try {
+        await Analysis.create({
+          analysisType: 'G2_LOAN_COUNSELLING',
+          customerId: customer.customer_id,
+          customerName: customer.name_1,
+          status: 'COMPLETED',
+          summary: `Prepared counselling for ${productType} loan.`,
+          result: {
+            g2Response
+          }
+        });
+      } catch (e) {
+        console.error("Failed to save G2 analysis history", e);
+      }
+
       res.json({
         success: true,
         data: g2Response

@@ -8,6 +8,7 @@ const { analyzeFinancials } = require('../services/financialAnalyzer');
 const { calculateRisk } = require('../services/riskEngine');
 const { evaluateLimitIncrease } = require('../services/limitDecisionEngine');
 const { generateLimitIncreaseExplanation } = require('../services/aiService');
+const Analysis = require('../models/Analysis');
 
 router.post('/:customerId', async (req, res) => {
   try {
@@ -55,6 +56,24 @@ router.post('/:customerId', async (req, res) => {
     } catch (aiError) {
       console.error("G4 AI Error:", aiError);
       aiErrorMsg = "AI explanation unavailable. The deterministic decision factors are still available.";
+    }
+
+    // Save Analysis History
+    try {
+      await Analysis.create({
+        analysisType: 'G4_LIMIT_INCREASE',
+        customerId: customer.customer_id,
+        customerName: customer.name_1,
+        status: 'COMPLETED',
+        summary: `Limit Increase Decision: ${decision.result.replace('_', ' ')}`,
+        result: {
+          decision,
+          aiExplanation,
+          aiErrorMsg
+        }
+      });
+    } catch (e) {
+      console.error("Failed to save G4 analysis history", e);
     }
 
     // 5. Build final response
