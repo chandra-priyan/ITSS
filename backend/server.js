@@ -11,10 +11,17 @@ app.use(cors());
 app.use(express.json());
 
 // Routes will be added here
-app.use('/api/customers', require('./routes/customers'));
-app.use('/api/customer360', require('./routes/customer360'));
-app.use('/api/ai', require('./routes/ai'));
-app.use('/api/ai/g2', require('./routes/g2'));
+const customerRoutes = require('./routes/customers');
+const customer360Routes = require('./routes/customer360');
+const aiRoutes = require('./routes/ai');
+const g2Routes = require('./routes/g2');
+const g3Routes = require('./routes/g3');
+
+app.use('/api/customers', customerRoutes);
+app.use('/api/customer360', customer360Routes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/ai/g2', g2Routes);
+app.use('/api/ai/g3', g3Routes);
 
 app.get('/', (req, res) => {
   res.send('API is running...');
