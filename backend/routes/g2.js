@@ -10,6 +10,7 @@ router.post('/:customerId', async (req, res) => {
   try {
     const customerId = req.params.customerId;
     const { productType } = req.body;
+    console.log(`[G2] Counselling started: ${customerId} (${productType})`);
     
     if (!productType) {
       return res.status(400).json({ success: false, message: 'Product type is required.' });
@@ -43,6 +44,7 @@ router.post('/:customerId', async (req, res) => {
     let ragContext;
     try {
       ragContext = await retrieveRelevantContext(query, 3);
+      console.log(`[G2] RAG context retrieved for: ${productType}`);
     } catch (e) {
       return res.status(503).json({ success: false, message: e.message });
     }
@@ -66,6 +68,7 @@ router.post('/:customerId', async (req, res) => {
         console.error("Failed to save G2 analysis history", e);
       }
 
+      console.log(`[G2] Counselling completed: ${customerId}`);
       res.json({
         success: true,
         data: g2Response

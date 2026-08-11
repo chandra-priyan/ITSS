@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import axios from 'axios';
-import CustomerSelect from './CustomerSelect';
+import { api } from '../services/api';
+import { calcMetrics, riskEngine } from '../utils';
 import { useCustomers } from '../context/CustomersContext';
 
 export default function G3() {
@@ -12,16 +12,25 @@ export default function G3() {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
-  React.useEffect(() => {
-    if (customers.length > 0 && !customerId) {
-      setCustomerId(customers[0].id);
-    }
-  }, [customers, customerId]);
-
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedFile(e.target.files[0]);
     }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setSelectedFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleClickUpload = () => {
+    fileInputRef.current?.click();
   };
 
   const handleExtract = async () => {
@@ -40,11 +49,7 @@ export default function G3() {
     }
 
     try {
-      const response = await axios.post('http://localhost:3001/api/ai/g3', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      const response = await api.runG3(formData);
       setResult(response.data);
     } catch (err) {
       console.error(err);
@@ -62,28 +67,71 @@ export default function G3() {
 
   return (
     <>
-      <div className="customer-select-row">
-        <div className="field-row">
-          <label>Customer (Optional)</label>
-          <CustomerSelect value={customerId} onChange={setCustomerId} />
+      <div className="card" style={{ padding: '24px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          <div className="field-row" style={{ margin: 0, flex: 1 }}>
+            <label style={{ marginBottom: '12px', display: 'block', fontWeight: 600, fontSize: '14px', color: 'var(--text-900)' }}>
+              Upload Document for Extraction
+            </label>
+            <div 
+              onClick={handleClickUpload}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              style={{
+                width: '100%',
+                border: '2px dashed var(--blue-500)',
+                borderRadius: '12px',
+                backgroundColor: 'var(--gold-100)',
+                padding: '40px 24px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px'
+              }}
+            >
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                onChange={handleFileChange} 
+                accept=".pdf,.docx,.jpg,.jpeg,.png"
+                style={{ display: 'none' }}
+              />
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--blue-600)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <div>
+                {selectedFile ? (
+                  <div style={{ color: 'var(--navy-800)', fontWeight: 600, fontSize: '15px' }}>
+                    <span style={{ marginRight: '8px', color: 'var(--risk-low)' }}>✓</span>
+                    {selectedFile.name}
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ color: 'var(--navy-800)', fontWeight: 600, fontSize: '15px', marginBottom: '6px' }}>Click to upload or drag and drop</div>
+                    <div style={{ color: 'var(--text-600)', fontSize: '13px' }}>Supports PDF, DOCX, JPG, PNG (Max 10MB)</div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ margin: 0, display: 'flex', justifyContent: 'flex-end' }}>
+             <button className="btn btn-primary" style={{ padding: '12px 32px', fontSize: '14px', width: 'auto' }} onClick={handleExtract} disabled={isProcessing || !selectedFile}>
+               {isProcessing ? 'Analyzing Document...' : 'Extract Information'}
+             </button>
+          </div>
         </div>
-        <div className="field-row">
-          <label>Document</label>
-          <input 
-            type="file" 
-            ref={fileInputRef}
-            onChange={handleFileChange} 
-            accept=".pdf,.docx,.jpg,.jpeg,.png"
-            style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', backgroundColor: '#fff', maxWidth: '250px' }}
-          />
-        </div>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleExtract}
-          disabled={isProcessing}
-        >
-          {isProcessing ? 'Analyzing document...' : 'Extract Information'}
-        </button>
       </div>
 
       {error && (

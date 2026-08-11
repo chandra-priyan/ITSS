@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { api } from '../services/api';
 
 export default function History() {
   const [history, setHistory] = useState([]);
@@ -14,9 +14,7 @@ export default function History() {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:3001/api/history', {
-        params: { analysisType: typeFilter }
-      });
+      const response = await api.getHistory({ analysisType: typeFilter });
       setHistory(response.data.data);
     } catch (err) {
       console.error(err);
@@ -41,7 +39,7 @@ export default function History() {
     setLoadingDetail(true);
     setSelectedDetail(null);
     try {
-      const response = await axios.get(`http://localhost:3001/api/history/${id}`);
+      const response = await api.getHistoryDetail(id);
       setSelectedDetail(response.data.data);
     } catch (err) {
       console.error(err);

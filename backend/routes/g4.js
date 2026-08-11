@@ -13,6 +13,7 @@ const Analysis = require('../models/Analysis');
 router.post('/:customerId', async (req, res) => {
   try {
     const customerId = req.params.customerId;
+    console.log(`[G4] Limit Increase Ask started: ${customerId}`);
     const customer = await Customer.findOne({ customer_id: customerId });
     
     if (!customer) {
@@ -73,8 +74,10 @@ router.post('/:customerId', async (req, res) => {
         }
       });
     } catch (e) {
-      console.error("Failed to save G4 analysis history", e);
+      console.error("[G4] Failed to save analysis history", e);
     }
+
+    console.log(`[G4] Decision generated: ${decision.result}`);
 
     // 5. Build final response
     res.json({

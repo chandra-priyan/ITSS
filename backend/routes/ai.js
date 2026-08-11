@@ -12,6 +12,7 @@ const { generateCreditBrief } = require('../services/aiService');
 router.post('/g1/:customerId', async (req, res) => {
   try {
     const customerId = req.params.customerId;
+    console.log(`[G1] Analysis started: ${customerId}`);
     const customer = await Customer.findOne({ customer_id: customerId });
     
     if (!customer) {
@@ -69,8 +70,10 @@ router.post('/g1/:customerId', async (req, res) => {
         }
       });
     } catch (e) {
-      console.error("Failed to save G1 analysis history", e);
+      console.error("[G1] Failed to save analysis history", e);
     }
+    
+    console.log(`[G1] Analysis completed: ${customerId}`);
 
     res.json({
       success: true,

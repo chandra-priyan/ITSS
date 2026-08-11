@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 import Topbar from './components/Topbar';
 import Dashboard from './components/Dashboard';
 import CustomersList from './components/CustomersList';
@@ -12,12 +12,13 @@ import G4 from './components/G4';
 import History from './components/History';
 import Settings from './components/Settings';
 import Login from './components/Login';
+import Chatbot from './components/Chatbot';
 import { CustomersProvider } from './context/CustomersContext';
 
 function AppLayout({ onLogout }) {
   return (
     <div id="appShell" className="active">
-      <Sidebar onLogout={onLogout} />
+      <Header onLogout={onLogout} />
       <div className="main-col">
         <Topbar />
         <main id="viewRoot">
@@ -34,6 +35,7 @@ function AppLayout({ onLogout }) {
           </Routes>
         </main>
       </div>
+      <Chatbot />
     </div>
   );
 }

@@ -35,11 +35,13 @@ export default function Topbar() {
 
   return (
     <div className="topbar">
-      <div>
-        <h1>{title}</h1>
-        <div className="topbar-sub">{sub}</div>
+      <div className="topbar-content">
+        <div>
+          <h1>{title}</h1>
+          <div className="topbar-sub">{sub}</div>
+        </div>
+        <div className="breadcrumb"></div>
       </div>
-      <div className="breadcrumb"></div>
     </div>
   );
 }

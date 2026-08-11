@@ -1,20 +1,3 @@
-export const mockState = {
-  customers: [
-    {id:'C001', name:'Arun Kumar', status:'Active', creditLimit:1000000, outstanding:750000, collateral:1200000, income:800000, existingLoan:500000},
-    {id:'C002', name:'Priya Sharma', status:'Active', creditLimit:1500000, outstanding:400000, collateral:2200000, income:1400000, existingLoan:200000},
-    {id:'C003', name:'Rajesh Menon', status:'Active', creditLimit:2000000, outstanding:1850000, collateral:2000000, income:900000, existingLoan:1400000},
-    {id:'C004', name:'Sneha Iyer', status:'Active', creditLimit:800000, outstanding:300000, collateral:1000000, income:600000, existingLoan:150000},
-    {id:'C005', name:'Vikram Nair', status:'Active', creditLimit:1200000, outstanding:1020000, collateral:1300000, income:750000, existingLoan:600000},
-    {id:'C006', name:'Kavita Das', status:'Dormant', creditLimit:500000, outstanding:50000, collateral:700000, income:400000, existingLoan:0},
-  ],
-  history: [],
-};
-
-export const POLICY_DOCS = {
-  'Home Loan': "Home Loan Policy (v3.2): Eligible for salaried and self-employed applicants. Max tenure 25 years. Required documents: identity proof, income proof (latest 3 months payslips or 2 years ITR), bank statements (6 months), property title documents and valuation report. Loan-to-value capped at 80% of property value. Applicant existing EMI obligations must not exceed 50% of net monthly income.",
-  'Personal Loan': "Personal Loan Policy (v2.1): Unsecured facility for salaried applicants with minimum 1 year current employment. Required documents: identity proof, income proof (latest 3 payslips), bank statements (3 months). Maximum tenure 5 years. Pricing is risk-based on bureau score and existing exposure.",
-  'Education Loan': "Education Loan Policy (v1.8): Covers tuition, hostel and books for recognised institutions. Required documents: admission letter, fee structure, co-applicant (parent/guardian) income proof, collateral required above ₹40L. Moratorium available until 6 months post course completion.",
-};
 
 export function fmtINR(n){
   if(n === null || n === undefined) return '—';

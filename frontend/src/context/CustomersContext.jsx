@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
+import { api } from '../services/api';
 
 const CustomersContext = createContext();
 
@@ -12,7 +12,7 @@ export const CustomersProvider = ({ children }) => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const res = await axios.get('http://localhost:3001/api/customers');
+        const res = await api.getCustomers();
         setCustomers(res.data);
       } catch (err) {
         console.error('Failed to fetch customers:', err);

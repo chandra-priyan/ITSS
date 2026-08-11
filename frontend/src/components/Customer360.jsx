@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../services/api';
 import { calcMetrics, riskEngine, badgeClass, fmtINR } from '../utils';
 
 export default function Customer360() {
@@ -13,7 +13,7 @@ export default function Customer360() {
   useEffect(() => {
     const fetchCustomer = async () => {
       try {
-        const res = await axios.get(`http://localhost:3001/api/customer360/${id}`);
+        const res = await api.getCustomer360(id);
         setCustomer(res.data);
       } catch (err) {
         setError(err.message);

@@ -46,6 +46,7 @@ router.post('/', upload.single('document'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No document uploaded.' });
     }
+    console.log(`[G3] Document received: ${req.file.originalname}`);
 
     const { customerId } = req.body;
     let textInfo;
@@ -125,8 +126,10 @@ router.post('/', upload.single('document'), async (req, res) => {
         }
       });
     } catch (e) {
-      console.error("Failed to save G3 analysis history", e);
+      console.error("[G3] Failed to save analysis history", e);
     }
+    
+    console.log(`[G3] Analysis completed for document: ${req.file.originalname}`);
 
     return res.json(finalResult);
   } catch (error) {

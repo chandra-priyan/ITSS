@@ -1,0 +1,33 @@
+import axios from 'axios';
+
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
+const apiClient = axios.create({
+  baseURL,
+  timeout: 30000, // 30 second timeout for AI operations
+});
+
+export const api = {
+  // Customers
+  getCustomers: () => apiClient.get('/api/customers'),
+  getCustomerById: (id) => apiClient.get(`/api/customers/${id}`),
+  getCustomer360: (id) => apiClient.get(`/api/customer360/${id}`),
+  
+  // AI Modules
+  runG1: (customerId) => apiClient.post(`/api/ai/g1/${customerId}`),
+  runG2: (customerId, payload) => apiClient.post(`/api/ai/g2/${customerId}`, payload),
+  runG3: (formData) => apiClient.post(`/api/ai/g3`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000 // Document processing can be slow
+  }),
+  runG4: (customerId) => apiClient.post(`/api/ai/g4/${customerId}`),
+  
+  // History
+  getHistory: (params) => apiClient.get('/api/history', { params }),
+  getHistoryDetail: (id) => apiClient.get(`/api/history/${id}`),
+
+  // Chatbot
+  sendChatMessage: (query, history = []) => apiClient.post('/api/chat', { query, history })
+};
+
+export default apiClient;

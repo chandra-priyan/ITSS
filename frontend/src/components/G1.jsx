@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import CustomerSelect from './CustomerSelect';
-import { fmtINR, fmtPct, fmtX } from '../utils';
+import { api } from '../services/api';
+import { fmtINR, fmtPct, fmtX, calcMetrics, riskEngine } from '../utils';
 import { useCustomers } from '../context/CustomersContext';
 import Gauge from './Gauge';
 
@@ -13,12 +12,31 @@ export default function G1() {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiError, setAiError] = useState(null);
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [riskFilter, setRiskFilter] = useState('ALL');
+
   // Set initial customer ID once data loads
   React.useEffect(() => {
     if (customers.length > 0 && !customerId) {
       setCustomerId(customers[0].id);
     }
   }, [customers, customerId]);
+
+  const filteredCustomers = customers.filter(c => {
+    const r = riskEngine(calcMetrics(c));
+    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || String(c.id).includes(searchTerm);
+    const matchesRisk = riskFilter === 'ALL' || r.level === riskFilter;
+    return matchesSearch && matchesRisk;
+  });
+
+  // Auto-select the first customer in the filtered list if the current one is filtered out
+  React.useEffect(() => {
+    if (filteredCustomers.length > 0 && !filteredCustomers.find(c => String(c.id) === String(customerId))) {
+      setCustomerId(filteredCustomers[0].id);
+    } else if (filteredCustomers.length === 0) {
+      setCustomerId('');
+    }
+  }, [filteredCustomers, customerId]);
 
   const handleRun = async () => {
     if (!customerId) return;
@@ -29,7 +47,7 @@ export default function G1() {
     setIsGeneratingAI(true);
     
     try {
-      const response = await axios.post(`http://localhost:3001/api/ai/g1/${customerId}`);
+      const response = await api.runG1(customerId);
       if (response.data.success) {
         setResults(response.data);
       } else {
@@ -51,14 +69,41 @@ export default function G1() {
 
   return (
     <>
-      <div className="customer-select-row">
-        <div className="field-row">
-          <label>Customer</label>
-          <CustomerSelect value={customerId} onChange={setCustomerId} />
+      <div className="card" style={{ padding: '16px 20px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div className="field-row" style={{ margin: 0, flex: 1.5, minWidth: '180px' }}>
+            <label>Search Name or ID</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Rajesh or 100100" 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+            />
+          </div>
+          <div className="field-row" style={{ margin: 0, flex: 1, minWidth: '130px' }}>
+            <label>Risk Level</label>
+            <select value={riskFilter} onChange={e => setRiskFilter(e.target.value)}>
+              <option value="ALL">All Risks</option>
+              <option value="HIGH">High Risk</option>
+              <option value="MEDIUM">Medium Risk</option>
+              <option value="LOW">Low Risk</option>
+            </select>
+          </div>
+          <div className="field-row" style={{ margin: 0, flex: 2, minWidth: '220px' }}>
+            <label>Select Customer</label>
+            <select value={customerId} onChange={e => setCustomerId(e.target.value)}>
+              {filteredCustomers.length === 0 && <option value="">No matches found</option>}
+              {filteredCustomers.map(c => (
+                <option key={c.id} value={c.id}>{c.name} — {c.id}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ margin: 0 }}>
+             <button className="btn btn-primary" style={{ padding: '10px 20px' }} onClick={handleRun} disabled={isGeneratingAI || !customerId}>
+               {isGeneratingAI ? 'Generating...' : 'Generate Brief'}
+             </button>
+          </div>
         </div>
-        <button className="btn btn-primary" onClick={handleRun} disabled={isGeneratingAI}>
-          {isGeneratingAI ? 'Generating...' : 'Generate Credit Brief'}
-        </button>
       </div>
       
       {isGeneratingAI && (
@@ -78,8 +123,8 @@ export default function G1() {
 
       {results && results.success && (
         <div id="g1Results">
-          <div className="grid cols-2" style={{alignItems: 'start', marginBottom: '16px'}}>
-            <div className="card">
+          <div className="grid cols-2" style={{alignItems: 'stretch', marginBottom: '16px'}}>
+            <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="card-title">Exposure Overview</div>
               <div className="metric-grid">
                 <div className="metric-box"><div className="label">Credit Limit</div><div className="value">{fmtINR(results.financialFacts.creditLimit)}</div></div>
