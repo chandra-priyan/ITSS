@@ -165,7 +165,75 @@ CRITICAL INSTRUCTIONS:
   }
 }
 
+/**
+ * Generates an explanation for the deterministic limit increase decision.
+ */
+async function generateLimitIncreaseExplanation(customerName, financialFacts, riskLevel, decisionResult) {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is missing or invalid.');
+  }
+
+  const payload = {
+    customerName,
+    financialFacts,
+    riskLevel,
+    decisionResult
+  };
+
+  const systemInstruction = `You are a banking Relationship Manager decision-support explanation assistant.
+The decision (ASK, ASK_WITH_CONDITIONS, or HOLD_OFF) has already been determined by deterministic rules.
+CRITICAL INSTRUCTIONS:
+- Do NOT change the decision.
+- Do NOT recalculate financial metrics.
+- Do NOT invent financial values or customer information.
+- Explain ONLY the supplied factors and conditions.
+- Clearly identify items requiring RM verification based on conditions.
+- Do NOT approve or reject credit.
+- Do NOT make an autonomous lending decision.
+- Produce structured JSON only.`;
+
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      summary: { type: Type.STRING, description: "1-2 sentences explaining the decision based on the factors." },
+      reasoning: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Bullet points explaining the factors." },
+      conditions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Any conditions identified." },
+      openQuestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Questions for the RM to verify." },
+      recommendedNextSteps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Next actions for RM." }
+    },
+    required: ["summary", "reasoning", "conditions", "openQuestions", "recommendedNextSteps"]
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: JSON.stringify(payload),
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: responseSchema,
+        temperature: 0.1
+      }
+    });
+
+    const text = response.text;
+    
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed.summary !== 'string') throw new Error('Invalid format');
+      return parsed;
+    } catch (parseError) {
+      console.error('Failed to parse or validate LLM response:', text);
+      throw new Error('AI returned an invalid response format.');
+    }
+  } catch (error) {
+    console.error('LLM Request Failed:', error.message);
+    throw new Error('AI explanation could not be generated.');
+  }
+}
+
 module.exports = {
   generateCreditBrief,
-  generateCounsellingPrep
+  generateCounsellingPrep,
+  generateLimitIncreaseExplanation
 };
