@@ -160,7 +160,7 @@ export default function History() {
         </select>
       </div>
 
-      {error && <div style={{ color: '#d32f2f', padding: '12px', backgroundColor: '#ffebee', borderRadius: '4px' }}>{error}</div>}
+      {error && <div style={{ color: 'var(--risk-high)', padding: '12px', backgroundColor: 'var(--risk-high-bg)', borderRadius: '4px' }}>{error}</div>}
 
       <div className="card" style={{padding: '6px 8px'}}>
         {history.length ? (

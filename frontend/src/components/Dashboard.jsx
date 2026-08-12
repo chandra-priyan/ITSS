@@ -51,7 +51,6 @@ export default function Dashboard() {
             <div className="stat-icon" style={{ backgroundColor: '#FFFFFF', color: '#4F46E5', boxShadow: '0 4px 10px rgba(79, 70, 229, 0.12)' }}><Users size={16} /></div>
           </div>
           <div className="stat-value" style={{ color: '#312E81' }}>{totalCustomers}</div>
-          <div className="stat-trend trend-up" style={{ backgroundColor: 'rgba(79,70,229,0.1)', color: '#4338CA' }}>↑ 12% this month</div>
         </div>
 
         <div className="card stat-card" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #F3E8FF 100%)', borderColor: '#E9D5FF', boxShadow: '0 10px 30px -10px rgba(147, 51, 234, 0.15)' }}>
@@ -60,7 +59,6 @@ export default function Dashboard() {
             <div className="stat-icon" style={{ backgroundColor: '#FFFFFF', color: '#9333EA', boxShadow: '0 4px 10px rgba(147, 51, 234, 0.12)' }}><Activity size={16} /></div>
           </div>
           <div className="stat-value" style={{ color: '#581C87' }}>{totalAnalyses}</div>
-          <div className="stat-trend trend-up" style={{ backgroundColor: 'rgba(147,51,234,0.1)', color: '#7E22CE' }}>↑ 5% this week</div>
         </div>
 
         <div className="card stat-card" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #FFE4E6 100%)', borderColor: '#FECDD3', boxShadow: '0 10px 30px -10px rgba(225, 29, 72, 0.15)' }}>
@@ -69,7 +67,6 @@ export default function Dashboard() {
             <div className="stat-icon" style={{ backgroundColor: '#FFFFFF', color: '#E11D48', boxShadow: '0 4px 10px rgba(225, 29, 72, 0.12)' }}><AlertTriangle size={16} /></div>
           </div>
           <div className="stat-value" style={{ color: '#881337' }}>{highRisk}</div>
-          <div className="stat-trend trend-down" style={{ backgroundColor: 'rgba(225,29,72,0.1)', color: '#BE123C' }}>↓ 2% from avg</div>
         </div>
 
         <div className="card stat-card" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #DCFCE7 100%)', borderColor: '#BBF7D0', boxShadow: '0 10px 30px -10px rgba(22, 163, 74, 0.15)' }}>
@@ -78,7 +75,6 @@ export default function Dashboard() {
             <div className="stat-icon" style={{ backgroundColor: '#FFFFFF', color: '#16A34A', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.12)' }}><Cpu size={16} /></div>
           </div>
           <div className="stat-value" style={{ color: '#14532D' }}>4</div>
-          <div className="stat-trend trend-neutral" style={{ backgroundColor: 'rgba(22,163,74,0.1)', color: '#15803D' }}>Running smoothly</div>
         </div>
       </div>
 
@@ -128,18 +124,18 @@ export default function Dashboard() {
             <AreaChart data={trendData} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
               <defs>
                 <linearGradient id="colorExposure" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--blue-500)" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="var(--blue-500)" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#087F5B" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#087F5B" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(45, 42, 38, 0.12)" />
               <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: 'var(--text-400)', fontSize: 12}} />
               <YAxis axisLine={false} tickLine={false} tick={{fill: 'var(--text-400)', fontSize: 12}} tickFormatter={(value) => `${value/100000}L`} />
               <RechartsTooltip 
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow)' }}
                 formatter={(value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)}
               />
-              <Area type="monotone" dataKey="exposure" stroke="var(--blue-600)" strokeWidth={3} fillOpacity={1} fill="url(#colorExposure)" />
+              <Area type="monotone" dataKey="exposure" stroke="#087F5B" strokeWidth={2.5} strokeLinecap="round" fillOpacity={1} fill="url(#colorExposure)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

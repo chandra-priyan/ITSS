@@ -2,6 +2,31 @@ import React, { useState } from 'react';
 
 export default function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = async () => {
+    setError('');
+    try {
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId, password })
+      });
+      const data = await response.json();
+      if (data.success) {
+        onLogin(data.user);
+      } else {
+        setError(data.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Server error during login');
+    }
+  };
 
   return (
     <div style={styles.container}>
@@ -27,7 +52,13 @@ export default function Login({ onLogin }) {
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
-                <input style={styles.input} type="text" defaultValue="r.krishnan@bancking.demo" />
+                <input 
+                  style={styles.input} 
+                  type="text" 
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  placeholder="ID" 
+                />
               </div>
             </div>
 
@@ -41,7 +72,9 @@ export default function Login({ onLogin }) {
                 <input 
                   style={styles.input} 
                   type={showPassword ? "text" : "password"} 
-                  defaultValue="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="***" 
                 />
                 <button 
                   type="button" 
@@ -63,8 +96,9 @@ export default function Login({ onLogin }) {
               </div>
             </div>
 
-            <button style={styles.signInBtn} onClick={onLogin}>Sign In</button>
-            <p style={styles.hint}>Demo build — any credentials will work.</p>
+            {error && <div style={{color: 'red', fontSize: '13px', marginTop: '-10px'}}>{error}</div>}
+            <button style={styles.signInBtn} onClick={handleLogin}>Sign In</button>
+            <p style={styles.hint}>Please log in with your assigned credentials.</p>
           </div>
         </div>
       </div>
@@ -141,7 +175,7 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '10px',
-    background: 'linear-gradient(135deg, #4C51BF, #26326B)',
+    background: 'linear-gradient(135deg, #8B4A3C, #4A443D)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -153,13 +187,13 @@ const styles = {
   brandName: {
     fontWeight: '700',
     fontSize: '22px',
-    color: '#1F2937',
+    color: '#2D2A26',
     letterSpacing: '-0.02em',
     lineHeight: '1',
   },
   brandSub: {
     fontSize: '11px',
-    color: '#9CA3AF',
+    color: '#A89F95',
     textTransform: 'uppercase',
     letterSpacing: '0.15em',
     marginTop: '4px',
@@ -167,13 +201,13 @@ const styles = {
   heading: {
     fontSize: '32px',
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#2D2A26',
     marginBottom: '12px',
     letterSpacing: '-0.02em',
   },
   supportText: {
     fontSize: '15px',
-    color: '#6B7280',
+    color: '#6B6259',
     marginBottom: '40px',
     lineHeight: '1.5',
   },
@@ -190,7 +224,7 @@ const styles = {
   label: {
     fontSize: '13px',
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#2D2A26',
   },
   inputWrapper: {
     position: 'relative',
@@ -200,16 +234,16 @@ const styles = {
   inputIcon: {
     position: 'absolute',
     left: '14px',
-    color: '#9CA3AF',
+    color: '#A89F95',
   },
   input: {
     width: '100%',
     padding: '14px 14px 14px 44px',
-    border: '1px solid #E5E7EB',
+    border: '1px solid #E8E0D5',
     borderRadius: '10px',
     fontSize: '15px',
-    background: '#F7F8FA',
-    color: '#1F2937',
+    background: '#FAF7F2',
+    color: '#2D2A26',
     outline: 'none',
     transition: 'border-color 0.2s, background-color 0.2s',
   },
@@ -219,13 +253,13 @@ const styles = {
     background: 'none',
     border: 'none',
     padding: '0',
-    color: '#9CA3AF',
+    color: '#A89F95',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
   },
   signInBtn: {
-    background: 'linear-gradient(135deg, #5B5FEF, #4C51BF)',
+    background: 'linear-gradient(135deg, #C08552, #8B4A3C)',
     color: '#fff',
     border: 'none',
     padding: '16px',
@@ -238,13 +272,13 @@ const styles = {
   },
   hint: {
     fontSize: '13px',
-    color: '#9CA3AF',
+    color: '#A89F95',
     textAlign: 'center',
     marginTop: '8px',
   },
   rightSection: {
     flex: '1',
-    background: 'radial-gradient(circle at 85% 80%, rgba(91,95,239,0.15), transparent 50%), radial-gradient(circle at 15% 20%, rgba(76,81,191,0.25), transparent 45%), #161B33',
+    background: 'radial-gradient(circle at 85% 80%, rgba(192,133,82,0.15), transparent 50%), radial-gradient(circle at 15% 20%, rgba(139,74,60,0.25), transparent 45%), #2D2A26',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

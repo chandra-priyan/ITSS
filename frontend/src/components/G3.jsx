@@ -145,7 +145,7 @@ export default function G3() {
       </div>
 
       {error && (
-        <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '8px', border: '1px solid #ef9a9a' }}>
+        <div style={{ marginTop: '20px', padding: '16px', backgroundColor: 'var(--risk-high-bg)', color: 'var(--risk-high)', borderRadius: '8px', border: '1px solid #ef9a9a' }}>
           <strong>Error:</strong> {error}
         </div>
       )}
@@ -154,7 +154,7 @@ export default function G3() {
         <div className="ai-results" style={{ marginTop: '24px' }}>
           
           <div className="result-card" style={{ marginBottom: '24px', padding: '24px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-            <h3 style={{ marginTop: 0, color: '#1a237e', marginBottom: '16px' }}>Document Processing Details</h3>
+            <h3 style={{ marginTop: 0, color: '#4A443D', marginBottom: '16px' }}>Document Processing Details</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <strong>File Name:</strong> {result.document?.fileName}
@@ -173,8 +173,8 @@ export default function G3() {
                     padding: '2px 8px', 
                     borderRadius: '12px', 
                     fontSize: '0.85em',
-                    backgroundColor: result.customerMatch.status === 'MATCH' ? '#e8f5e9' : (result.customerMatch.status === 'REVIEW_REQUIRED' ? '#fff3e0' : '#eceff1'),
-                    color: result.customerMatch.status === 'MATCH' ? '#2e7d32' : (result.customerMatch.status === 'REVIEW_REQUIRED' ? '#ef6c00' : '#546e7a')
+                    backgroundColor: result.customerMatch.status === 'MATCH' ? 'var(--risk-low-bg)' : (result.customerMatch.status === 'REVIEW_REQUIRED' ? 'var(--risk-medium-bg)' : 'var(--border)'),
+                    color: result.customerMatch.status === 'MATCH' ? 'var(--risk-low)' : (result.customerMatch.status === 'REVIEW_REQUIRED' ? 'var(--risk-medium)' : '#6B6259')
                   }}>
                     {result.customerMatch.status.replace('_', ' ')}
                   </span>
@@ -188,9 +188,9 @@ export default function G3() {
             
             <div className="result-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e8eaf6', paddingBottom: '8px', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, color: '#1a237e' }}>Extracted Facts</h3>
+                <h3 style={{ margin: 0, color: '#4A443D' }}>Extracted Facts</h3>
                 {result.extractedData?.document_type && (
-                  <span style={{ backgroundColor: '#e3f2fd', color: '#1565c0', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 600 }}>
+                  <span style={{ backgroundColor: '#F4EBE1', color: '#C08552', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 600 }}>
                     {result.extractedData.document_type.replace('_', ' ')}
                   </span>
                 )}
@@ -202,11 +202,11 @@ export default function G3() {
                   {/* Customer Information */}
                   {result.extractedData.customer && Object.keys(result.extractedData.customer).length > 0 && (
                     <div>
-                      <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px', fontSize: '14px' }}>Customer Information</strong>
+                      <strong style={{ display: 'block', color: '#4A443D', marginBottom: '8px', fontSize: '14px' }}>Customer Information</strong>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {Object.entries(result.extractedData.customer).map(([key, value]) => (
                           <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                            <span style={{ color: '#546e7a', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span> 
+                            <span style={{ color: '#6B6259', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span> 
                             <span style={{ fontWeight: 500 }}>
                               {typeof value === 'number' && key.includes('income') ? `₹${value.toLocaleString('en-IN')}` : value}
                             </span>
@@ -214,7 +214,7 @@ export default function G3() {
                         ))}
                         {result.extractedData.annual_income && (
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                            <span style={{ color: '#546e7a', textTransform: 'capitalize' }}>Annual Income:</span> 
+                            <span style={{ color: '#6B6259', textTransform: 'capitalize' }}>Annual Income:</span> 
                             <span style={{ fontWeight: 500 }}>₹{result.extractedData.annual_income.toLocaleString('en-IN')}</span>
                           </div>
                         )}
@@ -225,11 +225,11 @@ export default function G3() {
                   {/* Document-Specific Facts */}
                   {result.extractedData.document_facts && Object.keys(result.extractedData.document_facts).length > 0 && (
                     <div>
-                      <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px', fontSize: '14px' }}>Document-Specific Facts</strong>
+                      <strong style={{ display: 'block', color: '#4A443D', marginBottom: '8px', fontSize: '14px' }}>Document-Specific Facts</strong>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {Object.entries(result.extractedData.document_facts).map(([key, value]) => (
                           <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                            <span style={{ color: '#546e7a', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span> 
+                            <span style={{ color: '#6B6259', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span> 
                             <span style={{ fontWeight: 500 }}>
                               {typeof value === 'number' && (key.includes('amount') || key.includes('balance') || key.includes('valuation') || key.includes('income') || key.includes('deductions')) 
                                 ? `₹${value.toLocaleString('en-IN')}` 
@@ -244,11 +244,11 @@ export default function G3() {
                   {/* Important Dates */}
                   {result.extractedData.dates && result.extractedData.dates.length > 0 && (
                     <div>
-                      <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px', fontSize: '14px' }}>Important Dates</strong>
+                      <strong style={{ display: 'block', color: '#4A443D', marginBottom: '8px', fontSize: '14px' }}>Important Dates</strong>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {result.extractedData.dates.map((d, i) => (
                           <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                            <span style={{ color: '#546e7a' }}>{d.label}:</span> 
+                            <span style={{ color: '#6B6259' }}>{d.label}:</span> 
                             <span style={{ fontWeight: 500 }}>{formatDate(d.value)}</span>
                           </div>
                         ))}
@@ -259,7 +259,7 @@ export default function G3() {
                   {/* Submitted Documents */}
                   {result.extractedData.submitted_documents && result.extractedData.submitted_documents.length > 0 && (
                     <div>
-                      <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px', fontSize: '14px' }}>Submitted Documents</strong>
+                      <strong style={{ display: 'block', color: '#4A443D', marginBottom: '8px', fontSize: '14px' }}>Submitted Documents</strong>
                       <ul style={{ margin: 0, paddingLeft: '20px', color: '#333' }}>
                         {result.extractedData.submitted_documents.map((doc, i) => (
                           <li key={i}>{doc}</li>
@@ -275,18 +275,18 @@ export default function G3() {
             </div>
 
             <div className="result-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-              <h3 style={{ marginTop: 0, color: '#1a237e', borderBottom: '2px solid #e8eaf6', paddingBottom: '8px' }}>AI Summary</h3>
+              <h3 style={{ marginTop: 0, color: '#4A443D', borderBottom: '2px solid #e8eaf6', paddingBottom: '8px' }}>AI Summary</h3>
               {result.extractedData && result.extractedData.summary ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '16px' }}>
                   
                   <div>
-                    <strong style={{ display: 'block', color: '#546e7a', marginBottom: '8px' }}>Overview</strong>
+                    <strong style={{ display: 'block', color: '#6B6259', marginBottom: '8px' }}>Overview</strong>
                     <p style={{ margin: 0, lineHeight: 1.5 }}>{result.extractedData.summary}</p>
                   </div>
                   
                   {result.extractedData.key_findings && result.extractedData.key_findings.length > 0 && (
                     <div>
-                      <strong style={{ display: 'block', color: '#1565c0', marginBottom: '8px' }}>Key Findings</strong>
+                      <strong style={{ display: 'block', color: '#C08552', marginBottom: '8px' }}>Key Findings</strong>
                       <ul style={{ margin: 0, paddingLeft: '20px' }}>
                         {result.extractedData.key_findings.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
                       </ul>
@@ -304,8 +304,8 @@ export default function G3() {
 
                   {result.extractedData.attention_flags && result.extractedData.attention_flags.length > 0 && (
                     <div>
-                      <strong style={{ display: 'block', color: '#c62828', marginBottom: '8px' }}>Attention Flags</strong>
-                      <ul style={{ margin: 0, paddingLeft: '20px', color: '#c62828' }}>
+                      <strong style={{ display: 'block', color: 'var(--risk-high)', marginBottom: '8px' }}>Attention Flags</strong>
+                      <ul style={{ margin: 0, paddingLeft: '20px', color: 'var(--risk-high)' }}>
                         {result.extractedData.attention_flags.map((item, i) => <li key={i} style={{marginBottom: '4px'}}><strong>{item}</strong></li>)}
                       </ul>
                     </div>
@@ -313,7 +313,7 @@ export default function G3() {
                   
                   {result.extractedData.open_questions && result.extractedData.open_questions.length > 0 && (
                     <div>
-                      <strong style={{ display: 'block', color: '#2e7d32', marginBottom: '8px' }}>Open Questions</strong>
+                      <strong style={{ display: 'block', color: 'var(--risk-low)', marginBottom: '8px' }}>Open Questions</strong>
                       <ul style={{ margin: 0, paddingLeft: '20px' }}>
                         {result.extractedData.open_questions.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
                       </ul>

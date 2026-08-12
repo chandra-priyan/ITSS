@@ -24,6 +24,7 @@ const g3Routes = require('./routes/g3');
 const g4Routes = require('./routes/g4');
 const historyRoutes = require('./routes/history');
 const chatRoutes = require('./routes/chat');
+const authRoutes = require('./routes/auth');
 
 app.use('/api/customers', customerRoutes);
 app.use('/api/customer360', customer360Routes);
@@ -33,6 +34,7 @@ app.use('/api/ai/g3', g3Routes);
 app.use('/api/ai/g4', g4Routes);
 app.use('/api/history', historyRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

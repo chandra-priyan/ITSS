@@ -2,9 +2,13 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, ShieldAlert, MessageSquare, FileText, TrendingUp, History } from 'lucide-react';
 
-export default function Header({ onLogout }) {
+export default function Header({ user, onLogout }) {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
+
+  const name = user?.name || 'Ramesh Krishnan';
+  const displayTitle = name.charAt(0).toUpperCase() + name.slice(1);
+  const initials = name.substring(0, 2).toUpperCase();
 
   return (
     <header className="header-nav">
@@ -68,9 +72,9 @@ export default function Header({ onLogout }) {
 
       <div className="header-actions">
         <div className="header-rm">
-          <div className="rm-avatar">RK</div>
+          <div className="rm-avatar">{initials}</div>
           <div className="rm-info">
-            <div className="rm-name">Ramesh Krishnan</div>
+            <div className="rm-name">{displayTitle}</div>
             <div className="rm-role">Relationship Manager</div>
           </div>
         </div>

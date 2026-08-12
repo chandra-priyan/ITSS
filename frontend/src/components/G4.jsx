@@ -98,7 +98,7 @@ export default function G4() {
       </div>
 
       {error && (
-        <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '8px', border: '1px solid #ef9a9a' }}>
+        <div style={{ marginTop: '20px', padding: '16px', backgroundColor: 'var(--risk-high-bg)', color: 'var(--risk-high)', borderRadius: '8px', border: '1px solid #ef9a9a' }}>
           <strong>Error:</strong> {error}
         </div>
       )}
@@ -141,7 +141,7 @@ export default function G4() {
                     <div className="factor-row" key={i}>
                       <span className="fname">{f.factor}: {f.value}</span>
                       <b style={{ 
-                        color: f.impact === 'POSITIVE' ? '#2e7d32' : f.impact === 'CAUTION' ? '#f57c00' : '#c62828',
+                        color: f.impact === 'POSITIVE' ? 'var(--risk-low)' : f.impact === 'CAUTION' ? 'var(--risk-medium)' : 'var(--risk-high)',
                         fontSize: '0.85em'
                       }}>→ {f.impact}</b>
                       <div style={{ width: '100%', fontSize: '0.9em', color: '#666', marginTop: '4px' }}>{f.reason}</div>
@@ -155,7 +155,7 @@ export default function G4() {
           <div className="card" style={{ marginTop: '24px' }}>
             <div className="card-title">AI Explanation</div>
             {results.aiErrorMsg ? (
-              <div style={{ color: '#d32f2f', padding: '12px', backgroundColor: '#ffebee', borderRadius: '4px' }}>
+              <div style={{ color: 'var(--risk-high)', padding: '12px', backgroundColor: 'var(--risk-high-bg)', borderRadius: '4px' }}>
                 {results.aiErrorMsg}
               </div>
             ) : results.aiExplanation ? (
@@ -167,7 +167,7 @@ export default function G4() {
                 
                 {results.aiExplanation.reasoning && results.aiExplanation.reasoning.length > 0 && (
                   <div>
-                    <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px' }}>Reasoning</strong>
+                    <strong style={{ display: 'block', color: '#4A443D', marginBottom: '8px' }}>Reasoning</strong>
                     <ul style={{ margin: 0, paddingLeft: '20px' }}>
                       {results.aiExplanation.reasoning.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
                     </ul>
@@ -176,7 +176,7 @@ export default function G4() {
 
                 {results.aiExplanation.conditions && results.aiExplanation.conditions.length > 0 && (
                   <div>
-                    <strong style={{ display: 'block', color: '#f57c00', marginBottom: '8px' }}>Conditions</strong>
+                    <strong style={{ display: 'block', color: 'var(--risk-medium)', marginBottom: '8px' }}>Conditions</strong>
                     <ul style={{ margin: 0, paddingLeft: '20px' }}>
                       {results.aiExplanation.conditions.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
                     </ul>
@@ -194,7 +194,7 @@ export default function G4() {
 
                 {results.aiExplanation.recommendedNextSteps && results.aiExplanation.recommendedNextSteps.length > 0 && (
                   <div>
-                    <strong style={{ display: 'block', color: '#2e7d32', marginBottom: '8px' }}>Recommended Next Steps</strong>
+                    <strong style={{ display: 'block', color: 'var(--risk-low)', marginBottom: '8px' }}>Recommended Next Steps</strong>
                     <ul style={{ margin: 0, paddingLeft: '20px' }}>
                       {results.aiExplanation.recommendedNextSteps.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
                     </ul>

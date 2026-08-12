@@ -15,10 +15,10 @@ import Login from './components/Login';
 import Chatbot from './components/Chatbot';
 import { CustomersProvider } from './context/CustomersContext';
 
-function AppLayout({ onLogout }) {
+function AppLayout({ user, onLogout }) {
   return (
     <div id="appShell" className="active">
-      <Header onLogout={onLogout} />
+      <Header user={user} onLogout={onLogout} />
       <div className="main-col">
         <Topbar />
         <main id="viewRoot">
@@ -41,16 +41,16 @@ function AppLayout({ onLogout }) {
 }
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
 
-  if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  if (!user) {
+    return <Login onLogin={(u) => setUser(u)} />;
   }
 
   return (
     <CustomersProvider>
       <Router>
-        <AppLayout onLogout={() => setIsAuthenticated(false)} />
+        <AppLayout user={user} onLogout={() => setUser(null)} />
       </Router>
     </CustomersProvider>
   );
