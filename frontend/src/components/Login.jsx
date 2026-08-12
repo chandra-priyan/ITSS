@@ -9,7 +9,8 @@ export default function Login({ onLogin }) {
   const handleLogin = async () => {
     setError('');
     try {
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
