@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const PYTHON_RAG_SERVICE_URL = 'http://localhost:8000';
+const PYTHON_RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://localhost:8000';
 
 router.post('/', async (req, res) => {
   try {
