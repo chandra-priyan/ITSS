@@ -121,8 +121,10 @@ ANSWER:"""
         )
 
     except Exception as e:
-        print(f"Chat error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Chat error: {error_trace}")
+        raise HTTPException(status_code=500, detail=error_trace)
 
 if __name__ == "__main__":
     import uvicorn
