@@ -64,18 +64,93 @@ export default function History() {
     return map[type] || type;
   };
 
+  const renderSnapshotData = (key, value) => {
+    const formatKey = (k) => {
+      if (!k) return '';
+      return k.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, str => str.toUpperCase());
+    };
+    
+    if (value === null || value === undefined) return null;
+    
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      return (
+        <div key={key || 'root'} style={{ marginBottom: key ? '16px' : '0', padding: key ? '16px' : '0', backgroundColor: key ? 'var(--bg)' : 'transparent', borderRadius: '8px', border: key ? '1px solid var(--border)' : 'none' }}>
+          {key && <h4 style={{ margin: '0 0 16px 0', color: 'var(--navy-900)', fontSize: '16px' }}>{formatKey(key)}</h4>}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
+            {Object.entries(value).map(([k, v]) => {
+               if (typeof v === 'object') {
+                 return <div key={k} style={{ gridColumn: '1 / -1' }}>{renderSnapshotData(k, v)}</div>;
+               }
+               return renderSnapshotData(k, v);
+            })}
+          </div>
+        </div>
+      );
+    }
+    
+    if (Array.isArray(value)) {
+      return (
+        <div key={key} style={{ display: 'flex', flexDirection: 'column', gridColumn: '1 / -1', marginBottom: '8px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-600)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>{formatKey(key)}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {value.map((item, idx) => {
+              if (typeof item === 'object' && item !== null) {
+                return (
+                  <div key={idx} style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+                    {Object.entries(item).map(([k, v]) => {
+                      // Add specific coloring for 'impact' to make it pop
+                      let valColor = 'var(--text-900)';
+                      if (k.toLowerCase() === 'impact') {
+                         if (v === 'POSITIVE') valColor = 'var(--risk-low)';
+                         if (v === 'CAUTION') valColor = 'var(--risk-medium)';
+                         if (v === 'NEGATIVE') valColor = 'var(--risk-high)';
+                      }
+                      
+                      return (
+                        <div key={k}>
+                          <span style={{ fontSize: '11px', color: 'var(--text-600)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>{formatKey(k)}</span>
+                          <span style={{ fontSize: '14px', color: valColor, fontWeight: k.toLowerCase() === 'impact' ? '700' : '500' }}>
+                            {String(v)}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                );
+              }
+              return (
+                <div key={idx} style={{ fontSize: '15px', color: 'var(--text-900)' }}>
+                  • {String(item)}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={key} style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+        <span style={{ fontSize: '11px', color: 'var(--text-600)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>{formatKey(key)}</span>
+        <span style={{ fontSize: '15px', color: 'var(--text-900)', fontWeight: '600' }}>
+          {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}
+        </span>
+      </div>
+    );
+  };
+
   if (loading && history.length === 0) return <div>Loading history...</div>;
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
       {/* Filters */}
-      <div className="card" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-        <strong style={{ color: '#546e7a' }}>Filter by Type:</strong>
+      <div className="card" style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '16px 20px' }}>
+        <strong style={{ color: 'var(--navy-900)' }}>Filter by Type:</strong>
         <select 
           value={typeFilter} 
           onChange={(e) => setTypeFilter(e.target.value)}
-          style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #ccc' }}
+          style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '15px', color: 'var(--text-900)', outline: 'none', backgroundColor: 'var(--bg)' }}
         >
           <option value="All">All</option>
           <option value="G1_CREDIT_EXPOSURE">G1 Credit Exposure</option>
@@ -91,62 +166,62 @@ export default function History() {
         {history.length ? (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #eee' }}>
-                <th style={{ padding: '12px' }}>Date</th>
-                <th style={{ padding: '12px' }}>Type</th>
-                <th style={{ padding: '12px' }}>Customer</th>
-                <th style={{ padding: '12px' }}>Status</th>
-                <th style={{ padding: '12px' }}>Action</th>
+              <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                <th style={{ padding: '16px 12px', color: 'var(--text-600)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</th>
+                <th style={{ padding: '16px 12px', color: 'var(--text-600)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Type</th>
+                <th style={{ padding: '16px 12px', color: 'var(--text-600)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Customer</th>
+                <th style={{ padding: '16px 12px', color: 'var(--text-600)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+                <th style={{ padding: '16px 12px', color: 'var(--text-600)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {history.map((h, i) => (
                 <React.Fragment key={h._id}>
-                  <tr style={{ borderBottom: '1px solid #eee', backgroundColor: selectedId === h._id ? '#f5f5f5' : 'transparent' }}>
-                    <td className="mono" style={{ padding: '12px', fontSize: '0.9em' }}>{formatDate(h.createdAt)}</td>
-                    <td style={{ padding: '12px', fontWeight: 500 }}>{formatType(h.analysisType)}</td>
-                    <td style={{ padding: '12px' }}>
-                      {h.customerName} <span style={{ fontSize: '0.85em', color: '#888' }}>({h.customerId})</span>
+                  <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: selectedId === h._id ? 'var(--bg)' : 'transparent', transition: 'background-color 0.2s' }}>
+                    <td className="mono" style={{ padding: '16px 12px', fontSize: '14px', color: 'var(--text-900)' }}>{formatDate(h.createdAt)}</td>
+                    <td style={{ padding: '16px 12px', fontWeight: 600, color: 'var(--blue-600)' }}>{formatType(h.analysisType)}</td>
+                    <td style={{ padding: '16px 12px', color: 'var(--text-900)', fontWeight: 500 }}>
+                      {h.customerName} <span style={{ fontSize: '0.85em', color: 'var(--text-400)', marginLeft: '4px' }}>({h.customerId})</span>
                     </td>
-                    <td style={{ padding: '12px' }}>
+                    <td style={{ padding: '16px 12px' }}>
                       <span style={{ 
-                        padding: '4px 8px', 
-                        borderRadius: '12px', 
-                        fontSize: '0.85em',
-                        backgroundColor: h.status === 'COMPLETED' ? '#e8f5e9' : '#ffebee',
-                        color: h.status === 'COMPLETED' ? '#2e7d32' : '#c62828'
+                        padding: '6px 12px', 
+                        borderRadius: '100px', 
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        backgroundColor: h.status === 'COMPLETED' ? 'var(--risk-low-bg)' : 'var(--risk-high-bg)',
+                        color: h.status === 'COMPLETED' ? 'var(--risk-low)' : 'var(--risk-high)'
                       }}>
                         {h.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px' }}>
+                    <td style={{ padding: '16px 12px' }}>
                       <button 
                         onClick={() => fetchDetail(h._id)}
-                        style={{ padding: '6px 12px', cursor: 'pointer', backgroundColor: '#eceff1', border: 'none', borderRadius: '4px' }}
+                        style={{ padding: '8px 16px', cursor: 'pointer', backgroundColor: selectedId === h._id ? 'var(--navy-900)' : 'var(--blue-600)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', transition: 'background-color 0.2s' }}
                       >
-                        {selectedId === h._id ? 'Close' : 'View'}
+                        {selectedId === h._id ? 'Close' : 'View Snapshot'}
                       </button>
                     </td>
                   </tr>
                   
                   {selectedId === h._id && (
                     <tr>
-                      <td colSpan="5" style={{ padding: 0 }}>
-                        <div style={{ backgroundColor: '#fafafa', padding: '24px', borderBottom: '2px solid #ccc' }}>
+                      <td colSpan="5" style={{ padding: 0, borderBottom: '2px solid var(--border)' }}>
+                        <div style={{ backgroundColor: 'var(--surface)', padding: '32px', boxShadow: 'inset 0 4px 6px -4px rgba(0,0,0,0.05)' }}>
                           {loadingDetail ? (
-                            <div>Loading detail snapshot...</div>
+                            <div style={{ color: 'var(--text-600)' }}>Loading detail snapshot...</div>
                           ) : selectedDetail ? (
                             <div>
-                              <h3 style={{ marginTop: 0, color: '#1a237e' }}>Analysis Snapshot</h3>
-                              <p style={{ color: '#546e7a', fontStyle: 'italic', marginBottom: '20px' }}>
+                              <h3 style={{ marginTop: 0, color: 'var(--navy-900)', fontSize: '20px', marginBottom: '8px' }}>Analysis Snapshot</h3>
+                              <p style={{ color: 'var(--text-600)', fontSize: '15px', marginBottom: '32px', maxWidth: '800px', lineHeight: '1.5' }}>
                                 {selectedDetail.summary}
                               </p>
                               
-                              <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e0e0e0', overflowX: 'auto' }}>
-                                <pre style={{ margin: 0, fontSize: '0.85em', whiteSpace: 'pre-wrap' }}>
-                                  {JSON.stringify(selectedDetail.result, null, 2)}
-                                </pre>
+                              <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                {renderSnapshotData(null, selectedDetail.result)}
                               </div>
+
                               <div style={{ marginTop: '12px', fontSize: '0.8em', color: '#999' }}>
                                 Note: This is an immutable historical snapshot. It does not reflect current Customer 360 data.
                               </div>

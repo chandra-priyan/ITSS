@@ -12,6 +12,16 @@ export default function G3() {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
+  const notFoundSpan = <span style={{color: '#999'}}>Not found in document</span>;
+  const formatDate = (dateStr) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedFile(e.target.files[0]);
@@ -177,56 +187,87 @@ export default function G3() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             
             <div className="result-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-              <h3 style={{ marginTop: 0, color: '#1a237e', borderBottom: '2px solid #e8eaf6', paddingBottom: '8px' }}>Extracted Facts</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e8eaf6', paddingBottom: '8px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, color: '#1a237e' }}>Extracted Facts</h3>
+                {result.extractedData?.document_type && (
+                  <span style={{ backgroundColor: '#e3f2fd', color: '#1565c0', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 600 }}>
+                    {result.extractedData.document_type.replace('_', ' ')}
+                  </span>
+                )}
+              </div>
+              
               {result.extractedData ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Name:</strong> 
-                    <span>{result.extractedData.customerName || <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Customer ID:</strong> 
-                    <span>{result.extractedData.customerId || <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Loan Type:</strong> 
-                    <span>{result.extractedData.loanType || <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Amount:</strong> 
-                    <span>{result.extractedData.loanAmount ? `₹${result.extractedData.loanAmount.toLocaleString('en-IN')}` : <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Annual Income:</strong> 
-                    <span>{result.extractedData.annualIncome ? `₹${result.extractedData.annualIncome.toLocaleString('en-IN')}` : <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Employer:</strong> 
-                    <span>{result.extractedData.employer || <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Tenure:</strong> 
-                    <span>{result.extractedData.loanTenure || <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Interest Rate:</strong> 
-                    <span>{result.extractedData.interestRate || <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
-                    <strong style={{ color: '#546e7a' }}>Collateral:</strong> 
-                    <span>{result.extractedData.collateral || <span style={{color: '#999'}}>-</span>}</span>
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   
-                  {result.extractedData.existingLiabilities && result.extractedData.existingLiabilities.length > 0 && (
-                    <div style={{ marginTop: '8px' }}>
-                      <strong style={{ color: '#546e7a' }}>Existing Liabilities:</strong>
-                      <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-                        {result.extractedData.existingLiabilities.map((lib, i) => (
-                          <li key={i}>{lib.type}: ₹{lib.amount?.toLocaleString('en-IN')}</li>
+                  {/* Customer Information */}
+                  {result.extractedData.customer && Object.keys(result.extractedData.customer).length > 0 && (
+                    <div>
+                      <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px', fontSize: '14px' }}>Customer Information</strong>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {Object.entries(result.extractedData.customer).map(([key, value]) => (
+                          <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
+                            <span style={{ color: '#546e7a', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span> 
+                            <span style={{ fontWeight: 500 }}>
+                              {typeof value === 'number' && key.includes('income') ? `₹${value.toLocaleString('en-IN')}` : value}
+                            </span>
+                          </div>
+                        ))}
+                        {result.extractedData.annual_income && (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
+                            <span style={{ color: '#546e7a', textTransform: 'capitalize' }}>Annual Income:</span> 
+                            <span style={{ fontWeight: 500 }}>₹{result.extractedData.annual_income.toLocaleString('en-IN')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Document-Specific Facts */}
+                  {result.extractedData.document_facts && Object.keys(result.extractedData.document_facts).length > 0 && (
+                    <div>
+                      <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px', fontSize: '14px' }}>Document-Specific Facts</strong>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {Object.entries(result.extractedData.document_facts).map(([key, value]) => (
+                          <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
+                            <span style={{ color: '#546e7a', textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span> 
+                            <span style={{ fontWeight: 500 }}>
+                              {typeof value === 'number' && (key.includes('amount') || key.includes('balance') || key.includes('valuation') || key.includes('income') || key.includes('deductions')) 
+                                ? `₹${value.toLocaleString('en-IN')}` 
+                                : value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Important Dates */}
+                  {result.extractedData.dates && result.extractedData.dates.length > 0 && (
+                    <div>
+                      <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px', fontSize: '14px' }}>Important Dates</strong>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {result.extractedData.dates.map((d, i) => (
+                          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr' }}>
+                            <span style={{ color: '#546e7a' }}>{d.label}:</span> 
+                            <span style={{ fontWeight: 500 }}>{formatDate(d.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Submitted Documents */}
+                  {result.extractedData.submitted_documents && result.extractedData.submitted_documents.length > 0 && (
+                    <div>
+                      <strong style={{ display: 'block', color: '#1a237e', marginBottom: '8px', fontSize: '14px' }}>Submitted Documents</strong>
+                      <ul style={{ margin: 0, paddingLeft: '20px', color: '#333' }}>
+                        {result.extractedData.submitted_documents.map((doc, i) => (
+                          <li key={i}>{doc}</li>
                         ))}
                       </ul>
                     </div>
                   )}
+
                 </div>
               ) : (
                 <div style={{ color: '#666', fontStyle: 'italic' }}>No structured facts could be extracted.</div>
@@ -235,57 +276,46 @@ export default function G3() {
 
             <div className="result-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
               <h3 style={{ marginTop: 0, color: '#1a237e', borderBottom: '2px solid #e8eaf6', paddingBottom: '8px' }}>AI Summary</h3>
-              {result.summary ? (
+              {result.extractedData && result.extractedData.summary ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '16px' }}>
                   
-                  {result.summary.overview && (
-                    <div>
-                      <strong style={{ display: 'block', color: '#546e7a', marginBottom: '8px' }}>Overview</strong>
-                      <p style={{ margin: 0, lineHeight: 1.5 }}>{result.summary.overview}</p>
-                    </div>
-                  )}
+                  <div>
+                    <strong style={{ display: 'block', color: '#546e7a', marginBottom: '8px' }}>Overview</strong>
+                    <p style={{ margin: 0, lineHeight: 1.5 }}>{result.extractedData.summary}</p>
+                  </div>
                   
-                  {result.summary.keyFacts && result.summary.keyFacts.length > 0 && (
+                  {result.extractedData.key_findings && result.extractedData.key_findings.length > 0 && (
                     <div>
-                      <strong style={{ display: 'block', color: '#546e7a', marginBottom: '8px' }}>Key Facts</strong>
+                      <strong style={{ display: 'block', color: '#1565c0', marginBottom: '8px' }}>Key Findings</strong>
                       <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                        {result.summary.keyFacts.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
+                        {result.extractedData.key_findings.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
                       </ul>
                     </div>
                   )}
 
-                  {result.summary.importantFindings && result.summary.importantFindings.length > 0 && (
-                    <div>
-                      <strong style={{ display: 'block', color: '#1565c0', marginBottom: '8px' }}>Important Findings</strong>
-                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                        {result.summary.importantFindings.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
-                      </ul>
-                    </div>
-                  )}
-
-                  {result.summary.missingInformation && result.summary.missingInformation.length > 0 && (
+                  {result.extractedData.missing_information && result.extractedData.missing_information.length > 0 && (
                     <div>
                       <strong style={{ display: 'block', color: '#e65100', marginBottom: '8px' }}>Missing Information</strong>
                       <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                        {result.summary.missingInformation.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
+                        {result.extractedData.missing_information.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
                       </ul>
                     </div>
                   )}
 
-                  {result.summary.openQuestions && result.summary.openQuestions.length > 0 && (
-                    <div>
-                      <strong style={{ display: 'block', color: '#2e7d32', marginBottom: '8px' }}>Open Questions</strong>
-                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                        {result.summary.openQuestions.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
-                      </ul>
-                    </div>
-                  )}
-
-                  {result.summary.attentionFlags && result.summary.attentionFlags.length > 0 && (
+                  {result.extractedData.attention_flags && result.extractedData.attention_flags.length > 0 && (
                     <div>
                       <strong style={{ display: 'block', color: '#c62828', marginBottom: '8px' }}>Attention Flags</strong>
                       <ul style={{ margin: 0, paddingLeft: '20px', color: '#c62828' }}>
-                        {result.summary.attentionFlags.map((item, i) => <li key={i} style={{marginBottom: '4px'}}><strong>{item}</strong></li>)}
+                        {result.extractedData.attention_flags.map((item, i) => <li key={i} style={{marginBottom: '4px'}}><strong>{item}</strong></li>)}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {result.extractedData.open_questions && result.extractedData.open_questions.length > 0 && (
+                    <div>
+                      <strong style={{ display: 'block', color: '#2e7d32', marginBottom: '8px' }}>Open Questions</strong>
+                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                        {result.extractedData.open_questions.map((item, i) => <li key={i} style={{marginBottom: '4px'}}>{item}</li>)}
                       </ul>
                     </div>
                   )}

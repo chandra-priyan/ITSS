@@ -75,28 +75,35 @@ router.post('/', upload.single('document'), async (req, res) => {
       console.error('Failed to delete temp file:', cleanupError);
     }
 
+    // Debugging logs
+    console.log(`[G3] OCR text length: ${textInfo.text ? textInfo.text.length : 0}`);
+    console.log(`[G3] Document type: ${extractionResult.document_type}`);
+    console.log(`[G3] Extracted customer ID: ${extractionResult.customer?.customer_id}`);
+    console.log(`[G3] Extracted customer name: ${extractionResult.customer?.name}`);
+    console.log(`[G3] Extracted DOB: ${extractionResult.customer?.date_of_birth}`);
+    console.log(`[G3] Extracted monthly income: ${extractionResult.customer?.monthly_income}`);
+    console.log(`[G3] Extracted dates: ${JSON.stringify(extractionResult.dates || [])}`);
+    console.log(`[G3] Gemini extraction completed`);
+
     // Customer Matching Logic
     let customerMatch = null;
     if (customerId) {
       const dbCustomer = await Customer.findOne({ customer_id: customerId });
       if (dbCustomer) {
-        const docName = extractionResult.extractedData.customerName;
-        if (docName) {
-          const dbName = dbCustomer.name_1.toLowerCase().trim();
-          const parsedDocName = docName.toLowerCase().trim();
-          // Simple inclusion check or exact match
-          if (parsedDocName === dbName || dbName.includes(parsedDocName) || parsedDocName.includes(dbName)) {
-            customerMatch = { status: 'MATCH', message: 'Confirmed' };
-          } else {
-            customerMatch = { status: 'REVIEW_REQUIRED', message: `Database name: ${dbCustomer.name_1}` };
-          }
+        const docCustomerId = extractionResult.customer?.customer_id;
+        if (docCustomerId && docCustomerId.toString() === customerId.toString()) {
+          customerMatch = { status: 'MATCHED', message: 'Confirmed', document_customer_id: docCustomerId, database_customer_id: customerId };
         } else {
-          customerMatch = { status: 'REVIEW_REQUIRED', message: 'Name not found in document' };
+          customerMatch = { status: 'REVIEW_REQUIRED', message: 'Customer ID mismatch or not found', document_customer_id: docCustomerId, database_customer_id: customerId };
         }
       } else {
         customerMatch = { status: 'NOT_AVAILABLE', message: 'Customer ID not found in database' };
       }
     }
+
+    console.log(`[G3] Customer match status: ${customerMatch ? customerMatch.status : 'N/A'}`);
+
+    extractionResult.customer_match = customerMatch;
 
     const finalResult = {
       success: true,
@@ -106,7 +113,7 @@ router.post('/', upload.single('document'), async (req, res) => {
         ocrUsed: textInfo.ocrUsed
       },
       customerMatch,
-      extractedData: extractionResult.extractedData,
+      extractedData: extractionResult,
       summary: extractionResult.summary
     };
 
@@ -115,9 +122,9 @@ router.post('/', upload.single('document'), async (req, res) => {
       await Analysis.create({
         analysisType: 'G3_DOCUMENT_SUMMARY',
         customerId: customerId || 'UNKNOWN',
-        customerName: extractionResult.extractedData.customerName || 'Unknown',
+        customerName: extractionResult.customer?.name || 'Unknown',
         status: 'COMPLETED',
-        summary: `Document processed: ${req.file.originalname}`,
+        summary: `Document processed: ${req.file.originalname} as ${extractionResult.document_type || 'Unknown'}`,
         result: {
           document: finalResult.document,
           customerMatch,

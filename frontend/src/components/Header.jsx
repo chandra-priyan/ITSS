@@ -10,10 +10,10 @@ export default function Header({ onLogout }) {
     <header className="header-nav">
       <div className="header-content">
         <div className="header-brand">
-        <div className="brand-mark">M</div>
+        <div className="brand-mark">B</div>
         <div>
-          <div className="brand-name">Meridian</div>
-          <div className="brand-sub">Banking AI</div>
+          <div className="brand-name">Bancking</div>
+          <div className="brand-sub">AI</div>
         </div>
       </div>
 
