@@ -7,12 +7,8 @@ dotenv.config();
 connectDB();
 
 const app = express();
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  optionsSuccessStatus: 200
-};
 
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 
 // Routes will be added here
