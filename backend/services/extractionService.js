@@ -2,6 +2,16 @@ const { GoogleGenAI, Type } = require('@google/genai');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+const withTimeout = (promise, ms) => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`AI Request timed out after ${ms}ms`));
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+};
+
 /**
  * Normalizes extracted date strings to YYYY-MM-DD.
  * Returns null if invalid or unparseable.
@@ -141,7 +151,7 @@ Rules:
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await withTimeout(ai.models.generateContent({
       model: 'gemini-flash-latest',
       contents: `DOCUMENT TEXT:\n${documentText}`,
       config: {
@@ -150,7 +160,7 @@ Rules:
         responseSchema: responseSchema,
         temperature: 0.1
       }
-    });
+    }), 55000);
 
     const text = response.text;
     

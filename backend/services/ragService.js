@@ -28,28 +28,32 @@ async function initializeKnowledgeBase() {
     if (!fs.existsSync(knowledgeDir)) return;
     
     const files = fs.readdirSync(knowledgeDir);
+    const chunkPromises = [];
+    
     for (const file of files) {
       if (file.endsWith('.txt')) {
         const content = fs.readFileSync(path.join(knowledgeDir, file), 'utf-8');
-        
-        // Simple chunking (by double newline)
         const chunks = content.split('\n\n').filter(c => c.trim().length > 0);
         
         for (const chunk of chunks) {
-          try {
-            const embedding = await generateEmbedding(chunk);
-            vectorStore.push({
-              id: `${file}-${vectorStore.length}`,
-              source: file,
-              text: chunk,
-              embedding
-            });
-          } catch (e) {
-            console.error(`Failed to embed chunk from ${file}: ${e.message}`);
-          }
+          chunkPromises.push(
+            generateEmbedding(chunk)
+              .then(embedding => {
+                vectorStore.push({
+                  id: `${file}-${vectorStore.length}`,
+                  source: file,
+                  text: chunk,
+                  embedding
+                });
+              })
+              .catch(e => {
+                console.error(`Failed to embed chunk from ${file}: ${e.message}`);
+              })
+          );
         }
       }
     }
+    await Promise.all(chunkPromises);
   } finally {
     isInitializing = false;
   }

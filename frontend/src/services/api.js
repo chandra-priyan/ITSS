@@ -7,6 +7,34 @@ const apiClient = axios.create({
   timeout: 30000, // 30 second timeout for AI operations
 });
 
+// Add a response interceptor to gracefully handle timeouts and network errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+      return Promise.reject({
+        response: {
+          data: {
+            success: false,
+            message: 'Request timed out. Please try again.'
+          }
+        }
+      });
+    }
+    if (error.message === 'Network Error') {
+      return Promise.reject({
+        response: {
+          data: {
+            success: false,
+            message: 'Unable to connect to the Banking AI service.'
+          }
+        }
+      });
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const api = {
   // Customers
   getCustomers: () => apiClient.get('/api/customers'),

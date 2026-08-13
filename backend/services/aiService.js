@@ -2,6 +2,16 @@ const { GoogleGenAI, Type, Schema } = require('@google/genai');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+const withTimeout = (promise, ms) => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`AI Request timed out after ${ms}ms`));
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+};
+
 /**
  * Generates an AI risk brief using Google Gemini.
  */
@@ -62,7 +72,7 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await withTimeout(ai.models.generateContent({
       model: 'gemini-flash-latest',
       contents: JSON.stringify(payload),
       config: {
@@ -71,7 +81,7 @@ CRITICAL INSTRUCTIONS:
         responseSchema: responseSchema,
         temperature: 0.2
       }
-    });
+    }), 25000);
 
     const text = response.text;
     
@@ -138,7 +148,7 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await withTimeout(ai.models.generateContent({
       model: 'gemini-flash-latest',
       contents: JSON.stringify(payload),
       config: {
@@ -147,7 +157,7 @@ CRITICAL INSTRUCTIONS:
         responseSchema: responseSchema,
         temperature: 0.2
       }
-    });
+    }), 25000);
 
     const text = response.text;
     
@@ -205,7 +215,7 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await withTimeout(ai.models.generateContent({
       model: 'gemini-flash-latest',
       contents: JSON.stringify(payload),
       config: {
@@ -214,7 +224,7 @@ CRITICAL INSTRUCTIONS:
         responseSchema: responseSchema,
         temperature: 0.1
       }
-    });
+    }), 25000);
 
     const text = response.text;
     
