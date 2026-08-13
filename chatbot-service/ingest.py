@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import chromadb
-import google.generativeai as genai
+from google import genai
 from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
 import time
 
@@ -19,9 +19,10 @@ if not GEMINI_API_KEY:
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY environment variable is missing.")
 
-genai.configure(api_key=GEMINI_API_KEY)
-
 class GeminiEmbeddingFunction(EmbeddingFunction):
+    def __init__(self, api_key):
+        self.client = genai.Client(api_key=api_key)
+        
     def __call__(self, input: Documents) -> Embeddings:
         embeddings = []
         # Process in batches of 10 to respect API limits
@@ -31,13 +32,12 @@ class GeminiEmbeddingFunction(EmbeddingFunction):
             success = False
             while not success:
                 try:
-                    res = genai.embed_content(
-                        model="models/gemini-embedding-001",
-                        content=batch,
-                        task_type="retrieval_document"
+                    res = self.client.models.embed_content(
+                        model="gemini-embedding-001",
+                        contents=batch
                     )
-                    # 'embedding' will be a list of lists if batch is used
-                    embeddings.extend(res['embedding'])
+                    # res.embeddings is a list of objects with a .values attribute
+                    embeddings.extend([e.values for e in res.embeddings])
                     success = True
                     time.sleep(1)
                 except Exception as e:
@@ -100,7 +100,7 @@ def main():
     client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
     
     # Use our custom Gemini embedding function
-    embedding_func = GeminiEmbeddingFunction()
+    embedding_func = GeminiEmbeddingFunction(GEMINI_API_KEY)
     
     # Create or get collection
     collection = client.get_or_create_collection(
