@@ -73,7 +73,7 @@ CRITICAL INSTRUCTIONS:
 
   try {
     const response = await withTimeout(ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-flash-latest',
       contents: JSON.stringify(payload),
       config: {
         systemInstruction,
@@ -149,7 +149,7 @@ CRITICAL INSTRUCTIONS:
 
   try {
     const response = await withTimeout(ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-flash-latest',
       contents: JSON.stringify(payload),
       config: {
         systemInstruction,
@@ -216,7 +216,7 @@ CRITICAL INSTRUCTIONS:
 
   try {
     const response = await withTimeout(ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-flash-latest',
       contents: JSON.stringify(payload),
       config: {
         systemInstruction,
