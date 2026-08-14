@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import chromadb
-import google.generativeai as genai
+import google.genai as genai
 import os
 
 from ingest import GeminiEmbeddingFunction, CHROMA_DB_PATH
@@ -17,14 +17,14 @@ if not GEMINI_API_KEY:
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY environment variable is missing.")
 
-genai.configure(api_key=GEMINI_API_KEY)
+client_genai = genai.Client(api_key=GEMINI_API_KEY)
 
 # Initialize ChromaDB
 try:
     client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
     collection = client.get_collection(
         name="banking_dataset",
-        embedding_function=GeminiEmbeddingFunction()
+        embedding_function=GeminiEmbeddingFunction(api_key=GEMINI_API_KEY)
     )
 except Exception as e:
     print(f"Warning: Could not load ChromaDB. Did you run ingest.py? Error: {e}")
@@ -103,8 +103,10 @@ CONTEXT:
 
 ANSWER:"""
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+        response = client_genai.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
         
         # Deduplicate sources based on customer_id + source file for cleaner UI
         unique_sources = []

@@ -9,7 +9,7 @@ export default function Login({ onLogin }) {
   const handleLogin = async () => {
     setError('');
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://itss-backend-k0hz.onrender.com';
       const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
