@@ -104,7 +104,7 @@ CONTEXT:
 ANSWER:"""
 
         response = client_genai.models.generate_content(
-            model="gemini-flash-latest",
+            model="gemini-1.5-flash",
             contents=prompt,
         )
         

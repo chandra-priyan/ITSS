@@ -152,7 +152,7 @@ Rules:
 
   try {
     const response = await withTimeout(ai.models.generateContent({
-      model: 'gemini-flash-latest',
+      model: 'gemini-1.5-flash',
       contents: `DOCUMENT TEXT:\n${documentText}`,
       config: {
         systemInstruction,
