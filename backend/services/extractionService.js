@@ -13,59 +13,71 @@ const withTimeout = (promise, ms) => {
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 };
 
+async function callNvidiaFallback(systemInstruction, contents, timeoutMs = 55000) {
+  const apiKey = process.env.NVIDIA_API_KEY || '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';
+  console.log('[Extraction Service] Calling NVIDIA API (minimaxai/minimax-m3) fallback...');
+  const res = await axios.post(
+    'https://integrate.api.nvidia.com/v1/chat/completions',
+    {
+      model: 'minimaxai/minimax-m3',
+      messages: [
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: contents }
+      ],
+      temperature: 0.1,
+      top_p: 0.95,
+      max_tokens: 4096
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      timeout: timeoutMs
+    }
+  );
+  const rawText = res.data?.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error('NVIDIA API returned empty response.');
+  
+  const cleanedText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  return JSON.parse(cleanedText);
+}
+
 async function callLLM(systemInstruction, contents, responseSchema, timeoutMs = 55000) {
-  // 1. Try xAI Grok if key is configured
-  if (process.env.XAI_API_KEY && process.env.XAI_API_KEY.startsWith('xai-')) {
+  let geminiErr = null;
+
+  // 1. Primary Provider: Google Gemini
+  if (process.env.GEMINI_API_KEY) {
     try {
-      console.log('[Extraction Service] Calling xAI Grok...');
-      const grokRes = await axios.post(
-        'https://api.x.ai/v1/chat/completions',
-        {
-          model: 'grok-2-latest',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: contents }
-          ],
-          response_format: { type: 'json_object' },
+      console.log('[Extraction Service] Calling Primary: Google Gemini (gemini-flash-latest)...');
+      const response = await withTimeout(ai.models.generateContent({
+        model: 'gemini-flash-latest',
+        contents: contents,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: responseSchema,
           temperature: 0.1
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: timeoutMs
         }
-      );
-      const text = grokRes.data?.choices?.[0]?.message?.content;
-      if (text) {
-        return JSON.parse(text);
-      }
-    } catch (grokErr) {
-      const errMsg = grokErr.response?.data?.error || grokErr.message;
-      console.warn('[Extraction Service] xAI Grok call failed:', errMsg);
-      console.log('[Extraction Service] Falling back to Google Gemini...');
+      }), timeoutMs);
+
+      const text = response.text;
+      return JSON.parse(text);
+    } catch (err) {
+      geminiErr = err;
+      console.warn('[Extraction Service] Primary Google Gemini call failed:', err.message);
+      console.log('[Extraction Service] Falling back to NVIDIA API (minimaxai/minimax-m3)...');
     }
   }
 
-  // 2. Google Gemini Fallback
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY and XAI_API_KEY are missing or invalid.');
+  // 2. Fallback Provider: NVIDIA API (minimaxai/minimax-m3)
+  try {
+    return await callNvidiaFallback(systemInstruction, contents, timeoutMs);
+  } catch (nvidiaErr) {
+    console.error('[Extraction Service] NVIDIA Fallback call failed:', nvidiaErr.response?.data || nvidiaErr.message);
+    throw new Error(`Extraction AI failed. Gemini: ${geminiErr?.message || 'N/A'}. NVIDIA: ${nvidiaErr.message}`);
   }
-
-  const response = await withTimeout(ai.models.generateContent({
-    model: 'gemini-flash-latest',
-    contents: contents,
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: responseSchema,
-      temperature: 0.1
-    }
-  }), timeoutMs);
-
-  const text = response.text;
-  return JSON.parse(text);
 }
 
 /**
