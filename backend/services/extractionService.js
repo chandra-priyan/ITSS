@@ -13,7 +13,7 @@ const withTimeout = (promise, ms) => {
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 };
 
-async function callNvidiaFallback(systemInstruction, contents, timeoutMs = 55000) {
+async function callNvidiaFallback(systemInstruction, contents, timeoutMs = 60000) {
   const apiKey = process.env.NVIDIA_API_KEY || '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';
   console.log('[Extraction Service] Calling NVIDIA API (minimaxai/minimax-m3) fallback...');
   const res = await axios.post(
@@ -44,36 +44,39 @@ async function callNvidiaFallback(systemInstruction, contents, timeoutMs = 55000
   return JSON.parse(cleanedText);
 }
 
-async function callLLM(systemInstruction, contents, responseSchema, timeoutMs = 55000) {
+async function callLLM(systemInstruction, contents, responseSchema, timeoutMs = 25000) {
   let geminiErr = null;
 
-  // 1. Primary Provider: Google Gemini
+  // 1. Primary Provider: Google Gemini (testing available models)
   if (process.env.GEMINI_API_KEY) {
-    try {
-      console.log('[Extraction Service] Calling Primary: Google Gemini (gemini-flash-latest)...');
-      const response = await withTimeout(ai.models.generateContent({
-        model: 'gemini-flash-latest',
-        contents: contents,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: responseSchema,
-          temperature: 0.1
-        }
-      }), timeoutMs);
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+    for (const model of modelsToTry) {
+      try {
+        console.log(`[Extraction Service] Calling Primary: Google Gemini (${model})...`);
+        const response = await withTimeout(ai.models.generateContent({
+          model,
+          contents: contents,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: responseSchema,
+            temperature: 0.1
+          }
+        }), timeoutMs);
 
-      const text = response.text;
-      return JSON.parse(text);
-    } catch (err) {
-      geminiErr = err;
-      console.warn('[Extraction Service] Primary Google Gemini call failed:', err.message);
-      console.log('[Extraction Service] Falling back to NVIDIA API (minimaxai/minimax-m3)...');
+        const text = response.text;
+        return JSON.parse(text);
+      } catch (err) {
+        geminiErr = err;
+        console.warn(`[Extraction Service] Google Gemini (${model}) failed:`, err.message);
+      }
     }
+    console.log('[Extraction Service] Gemini model attempts exhausted. Falling back to NVIDIA API (minimaxai/minimax-m3)...');
   }
 
   // 2. Fallback Provider: NVIDIA API (minimaxai/minimax-m3)
   try {
-    return await callNvidiaFallback(systemInstruction, contents, timeoutMs);
+    return await callNvidiaFallback(systemInstruction, contents, 60000);
   } catch (nvidiaErr) {
     console.error('[Extraction Service] NVIDIA Fallback call failed:', nvidiaErr.response?.data || nvidiaErr.message);
     throw new Error(`Extraction AI failed. Gemini: ${geminiErr?.message || 'N/A'}. NVIDIA: ${nvidiaErr.message}`);
