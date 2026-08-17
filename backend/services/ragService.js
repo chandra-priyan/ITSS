@@ -1,95 +1,54 @@
 const fs = require('fs');
 const path = require('path');
-const { generateEmbedding } = require('./embeddingService');
 
-const vectorStore = []; // Simple in-memory store for demo
+let cachedKnowledge = null;
 
-function cosineSimilarity(vecA, vecB) {
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-
-let isInitializing = false;
-
-async function initializeKnowledgeBase() {
-  if (vectorStore.length > 0 || isInitializing) return;
-  isInitializing = true;
+function loadKnowledgeBase() {
+  if (cachedKnowledge) return cachedKnowledge;
   
-  try {
-    const knowledgeDir = path.join(__dirname, '../knowledge');
-    if (!fs.existsSync(knowledgeDir)) return;
-    
-    const files = fs.readdirSync(knowledgeDir);
-    const chunkPromises = [];
-    
-    for (const file of files) {
-      if (file.endsWith('.txt')) {
-        const content = fs.readFileSync(path.join(knowledgeDir, file), 'utf-8');
-        const chunks = content.split('\n\n').filter(c => c.trim().length > 0);
-        
-        for (const chunk of chunks) {
-          chunkPromises.push(
-            generateEmbedding(chunk)
-              .then(embedding => {
-                vectorStore.push({
-                  id: `${file}-${vectorStore.length}`,
-                  source: file,
-                  text: chunk,
-                  embedding
-                });
-              })
-              .catch(e => {
-                console.error(`Failed to embed chunk from ${file}: ${e.message}`);
-              })
-          );
-        }
-      }
+  const knowledgeDir = path.join(__dirname, '../knowledge');
+  if (!fs.existsSync(knowledgeDir)) return [];
+
+  const files = fs.readdirSync(knowledgeDir);
+  const knowledgeDocs = [];
+
+  for (const file of files) {
+    if (file.endsWith('.txt')) {
+      const content = fs.readFileSync(path.join(knowledgeDir, file), 'utf-8');
+      knowledgeDocs.push({
+        source: file,
+        text: content
+      });
     }
-    await Promise.all(chunkPromises);
-  } finally {
-    isInitializing = false;
   }
+  cachedKnowledge = knowledgeDocs;
+  return cachedKnowledge;
 }
 
 /**
- * Retrieve relevant chunks for a customer's product query.
+ * Retrieve relevant context for a query from local knowledge files.
  */
 async function retrieveRelevantContext(query, topK = 4) {
-  await initializeKnowledgeBase();
-  
-  if (vectorStore.length === 0) {
-    return "No relevant product information was found. Please verify the knowledge base.";
+  const docs = loadKnowledgeBase();
+  if (docs.length === 0) {
+    return "No relevant product information was found.";
   }
+
+  const queryLower = (query || '').toLowerCase();
   
-  try {
-    const queryEmbedding = await generateEmbedding(query);
-    
-    const scoredChunks = vectorStore.map(doc => ({
-      ...doc,
-      score: cosineSimilarity(queryEmbedding, doc.embedding)
-    }));
-    
-    // Sort descending by score
-    scoredChunks.sort((a, b) => b.score - a.score);
-    
-    // Take top K chunks
-    const topChunks = scoredChunks.slice(0, topK);
-    
-    return topChunks.map(c => `[Source: ${c.source}]\n${c.text}`).join('\n\n---\n\n');
-  } catch (e) {
-    console.error('RAG Retrieval failed:', e.message);
-    throw new Error('Product information could not be retrieved. Please verify the product knowledge base.');
-  }
+  // Filter or prioritize docs containing query keywords, or include all policy docs if short
+  const relevantDocs = docs.filter(doc => {
+    const textLower = doc.text.toLowerCase();
+    const filenameLower = doc.source.toLowerCase();
+    return queryLower.split(' ').some(word => word.length > 3 && (textLower.includes(word) || filenameLower.includes(word)));
+  });
+
+  const selectedDocs = relevantDocs.length > 0 ? relevantDocs : docs;
+
+  return selectedDocs.map(c => `[Source: ${c.source}]\n${c.text}`).join('\n\n---\n\n');
 }
 
 module.exports = {
   retrieveRelevantContext
 };
+

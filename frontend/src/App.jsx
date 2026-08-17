@@ -12,7 +12,6 @@ import G4 from './components/G4';
 import History from './components/History';
 import Settings from './components/Settings';
 import Login from './components/Login';
-import Chatbot from './components/Chatbot';
 import { CustomersProvider } from './context/CustomersContext';
 
 function AppLayout({ user, onLogout }) {
@@ -35,7 +34,6 @@ function AppLayout({ user, onLogout }) {
           </Routes>
         </main>
       </div>
-      <Chatbot />
     </div>
   );
 }

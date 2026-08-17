@@ -1,4 +1,5 @@
-const { GoogleGenAI, Type, Schema } = require('@google/genai');
+const { GoogleGenAI, Type } = require('@google/genai');
+const axios = require('axios');
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -13,17 +14,69 @@ const withTimeout = (promise, ms) => {
 };
 
 /**
- * Generates an AI risk brief using Google Gemini.
+ * Executes LLM completion using xAI Grok (if configured) with automatic failover to Google Gemini.
  */
-async function generateCreditBrief(customerName, financialFacts, riskLevel, riskScore, riskFactors) {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is missing or invalid.');
+async function callLLM(systemInstruction, payload, responseSchema, timeoutMs = 25000) {
+  // 1. Try xAI Grok if key is configured
+  if (process.env.XAI_API_KEY && process.env.XAI_API_KEY.startsWith('xai-')) {
+    try {
+      console.log('[AI Service] Calling xAI Grok...');
+      const grokRes = await axios.post(
+        'https://api.x.ai/v1/chat/completions',
+        {
+          model: 'grok-2-latest',
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: typeof payload === 'string' ? payload : JSON.stringify(payload) }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.XAI_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: timeoutMs
+        }
+      );
+      const text = grokRes.data?.choices?.[0]?.message?.content;
+      if (text) {
+        return JSON.parse(text);
+      }
+    } catch (grokErr) {
+      const errMsg = grokErr.response?.data?.error || grokErr.message;
+      console.warn('[AI Service] xAI Grok call failed:', errMsg);
+      console.log('[AI Service] Falling back to Google Gemini...');
+    }
   }
 
+  // 2. Google Gemini Fallback
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY and XAI_API_KEY are missing or invalid.');
+  }
+
+  const response = await withTimeout(ai.models.generateContent({
+    model: 'gemini-flash-latest',
+    contents: typeof payload === 'string' ? payload : JSON.stringify(payload),
+    config: {
+      systemInstruction,
+      responseMimeType: "application/json",
+      responseSchema: responseSchema,
+      temperature: 0.2
+    }
+  }), timeoutMs);
+
+  const text = response.text;
+  return JSON.parse(text);
+}
+
+/**
+ * Generates an AI risk brief.
+ */
+async function generateCreditBrief(customerName, financialFacts, riskLevel, riskScore, riskFactors) {
   const payload = {
-    customer: {
-      name: customerName
-    },
+    customer: { name: customerName },
     financialFacts,
     risk: {
       level: riskLevel,
@@ -48,72 +101,29 @@ CRITICAL INSTRUCTIONS:
   const responseSchema = {
     type: Type.OBJECT,
     properties: {
-      summary: {
-        type: Type.STRING,
-        description: "A concise 2-3 sentence overview of the risk and financial position."
-      },
-      keyFindings: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "3-4 bullet points highlighting key deterministic facts."
-      },
-      openQuestions: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "2-3 questions the RM should ask the customer based on the data."
-      },
-      recommendedActions: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "1-2 recommended next steps for the RM to take."
-      }
+      summary: { type: Type.STRING, description: "A concise 2-3 sentence overview of the risk and financial position." },
+      keyFindings: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-4 bullet points highlighting key deterministic facts." },
+      openQuestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "2-3 questions the RM should ask the customer based on the data." },
+      recommendedActions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "1-2 recommended next steps for the RM to take." }
     },
     required: ["summary", "keyFindings", "openQuestions", "recommendedActions"]
   };
 
   try {
-    const response = await withTimeout(ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: JSON.stringify(payload),
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        temperature: 0.2
-      }
-    }), 25000);
-
-    const text = response.text;
-    
-    // Safety check parsing
-    try {
-      const parsed = JSON.parse(text);
-      
-      // Validation
-      if (typeof parsed.summary !== 'string') throw new Error('Invalid summary format');
-      if (!Array.isArray(parsed.keyFindings)) throw new Error('Invalid keyFindings format');
-      if (!Array.isArray(parsed.openQuestions)) throw new Error('Invalid openQuestions format');
-      if (!Array.isArray(parsed.recommendedActions)) throw new Error('Invalid recommendedActions format');
-
-      return parsed;
-    } catch (parseError) {
-      console.error('Failed to parse or validate LLM response:', text);
-      throw new Error('AI returned an invalid response format.');
-    }
+    const parsed = await callLLM(systemInstruction, payload, responseSchema, 25000);
+    if (typeof parsed.summary !== 'string') throw new Error('Invalid summary format');
+    if (!Array.isArray(parsed.keyFindings)) throw new Error('Invalid keyFindings format');
+    return parsed;
   } catch (error) {
-    console.error('LLM Request Failed:', error.message);
+    console.error('AI Request Failed:', error.message);
     throw new Error(error.message);
   }
 }
 
 /**
- * Generates loan counselling prep using Google Gemini + RAG Context.
+ * Generates loan counselling prep.
  */
 async function generateCounsellingPrep(customerFacts, ragContext) {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is missing or invalid.');
-  }
-
   const systemInstruction = `You are a banking Relationship Manager assistant preparing for a loan counselling discussion.
 You are given a set of customer financial facts and retrieved knowledge base context about the bank's policies/products.
 CRITICAL INSTRUCTIONS:
@@ -126,10 +136,7 @@ CRITICAL INSTRUCTIONS:
 - Keep the response concise.
 - Produce structured JSON only.`;
 
-  const payload = {
-    customerFacts,
-    retrievedKnowledge: ragContext
-  };
+  const payload = { customerFacts, retrievedKnowledge: ragContext };
 
   const responseSchema = {
     type: Type.OBJECT,
@@ -141,36 +148,15 @@ CRITICAL INSTRUCTIONS:
       productConsiderations: { type: Type.ARRAY, items: { type: Type.STRING } },
       potentialConcerns: { type: Type.ARRAY, items: { type: Type.STRING } }
     },
-    required: [
-      "customerSnapshot", "talkingPoints", "questionsToAsk", 
-      "documentChecklist", "productConsiderations", "potentialConcerns"
-    ]
+    required: ["customerSnapshot", "talkingPoints", "questionsToAsk", "documentChecklist", "productConsiderations", "potentialConcerns"]
   };
 
   try {
-    const response = await withTimeout(ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: JSON.stringify(payload),
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        temperature: 0.2
-      }
-    }), 25000);
-
-    const text = response.text;
-    
-    try {
-      const parsed = JSON.parse(text);
-      if (!Array.isArray(parsed.customerSnapshot)) throw new Error('Invalid format');
-      return parsed;
-    } catch (parseError) {
-      console.error('Failed to parse or validate LLM response:', text);
-      throw new Error('AI returned an invalid response format.');
-    }
+    const parsed = await callLLM(systemInstruction, payload, responseSchema, 25000);
+    if (!Array.isArray(parsed.customerSnapshot)) throw new Error('Invalid format');
+    return parsed;
   } catch (error) {
-    console.error('LLM Request Failed:', error.message);
+    console.error('AI Request Failed:', error.message);
     throw new Error('Counselling preparation could not be generated. Please try again.');
   }
 }
@@ -179,16 +165,7 @@ CRITICAL INSTRUCTIONS:
  * Generates an explanation for the deterministic limit increase decision.
  */
 async function generateLimitIncreaseExplanation(customerName, financialFacts, riskLevel, decisionResult) {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is missing or invalid.');
-  }
-
-  const payload = {
-    customerName,
-    financialFacts,
-    riskLevel,
-    decisionResult
-  };
+  const payload = { customerName, financialFacts, riskLevel, decisionResult };
 
   const systemInstruction = `You are a banking Relationship Manager decision-support explanation assistant.
 The decision (ASK, ASK_WITH_CONDITIONS, or HOLD_OFF) has already been determined by deterministic rules.
@@ -215,29 +192,11 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const response = await withTimeout(ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: JSON.stringify(payload),
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        temperature: 0.1
-      }
-    }), 25000);
-
-    const text = response.text;
-    
-    try {
-      const parsed = JSON.parse(text);
-      if (typeof parsed.summary !== 'string') throw new Error('Invalid format');
-      return parsed;
-    } catch (parseError) {
-      console.error('Failed to parse or validate LLM response:', text);
-      throw new Error('AI returned an invalid response format.');
-    }
+    const parsed = await callLLM(systemInstruction, payload, responseSchema, 25000);
+    if (typeof parsed.summary !== 'string') throw new Error('Invalid format');
+    return parsed;
   } catch (error) {
-    console.error('LLM Request Failed:', error.message);
+    console.error('AI Request Failed:', error.message);
     throw new Error('AI explanation could not be generated.');
   }
 }
@@ -247,3 +206,4 @@ module.exports = {
   generateCounsellingPrep,
   generateLimitIncreaseExplanation
 };
+

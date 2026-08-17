@@ -1,16 +1,41 @@
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI, Type } = require('@google/genai');
 const dotenv = require('dotenv');
 dotenv.config();
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-async function listModels() {
+async function testStructured() {
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      greeting: { type: Type.STRING },
+      status: { type: Type.STRING }
+    },
+    required: ["greeting", "status"]
+  };
+
   try {
-    const models = await ai.models.list();
-    // Wait, the SDK is 'ai.models.list()'? I can just run it using raw REST to be safe
-    console.log(models);
-  } catch (e) {
-    console.error(e);
+    console.log('Testing gemini-flash-latest with responseSchema...');
+    const res = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: 'Say hello in structured JSON format.',
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: responseSchema,
+        temperature: 0.1
+      }
+    });
+    console.log('SUCCESS:', res.text);
+  } catch (err) {
+    console.error('FAILED:', err.message);
   }
 }
-listModels();
+testStructured();
+
+
+
+
+
+
+
+

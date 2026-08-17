@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://itss-backend-k0hz.onrender.com';
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 const apiClient = axios.create({
   baseURL,
@@ -52,10 +52,7 @@ export const api = {
   
   // History
   getHistory: (params) => apiClient.get('/api/history', { params }),
-  getHistoryDetail: (id) => apiClient.get(`/api/history/${id}`),
-
-  // Chatbot
-  sendChatMessage: (query, history = []) => apiClient.post('/api/chat', { query, history })
+  getHistoryDetail: (id) => apiClient.get(`/api/history/${id}`)
 };
 
 export default apiClient;
