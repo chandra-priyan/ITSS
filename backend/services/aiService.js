@@ -1,7 +1,4 @@
 const { GoogleGenAI, Type } = require('@google/genai');
-const axios = require('axios');
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const withTimeout = (promise, ms) => {
   let timeoutId;
@@ -14,52 +11,43 @@ const withTimeout = (promise, ms) => {
 };
 
 /**
- * NVIDIA API (minimaxai/minimax-m3) fallback completion helper.
+ * Retrieves all configured Gemini API keys in priority order:
+ * GEMINI_API_KEY_1, GEMINI_API_KEY_2, GEMINI_API_KEY_3, GEMINI_API_KEY
  */
-async function callNvidiaFallback(systemInstruction, payload, timeoutMs = 60000) {
-  const apiKey = process.env.NVIDIA_API_KEY || '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';
-  console.log('[AI Service] Calling NVIDIA API (minimaxai/minimax-m3) fallback...');
-  const res = await axios.post(
-    'https://integrate.api.nvidia.com/v1/chat/completions',
-    {
-      model: 'minimaxai/minimax-m3',
-      messages: [
-        { role: 'system', content: systemInstruction },
-        { role: 'user', content: typeof payload === 'string' ? payload : JSON.stringify(payload) }
-      ],
-      temperature: 0.2,
-      top_p: 0.95,
-      max_tokens: 4096
-    },
-    {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      timeout: timeoutMs
-    }
-  );
-  const rawText = res.data?.choices?.[0]?.message?.content;
-  if (!rawText) throw new Error('NVIDIA API returned empty response.');
-  
-  const cleanedText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-  return JSON.parse(cleanedText);
+function getGeminiApiKeys() {
+  const keys = [
+    process.env.GEMINI_API_KEY_1,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY
+  ].filter(key => key && typeof key === 'string' && key.trim() !== '');
+
+  return [...new Set(keys)];
 }
 
 /**
- * Executes LLM completion with Google Gemini as Primary (multi-model retry) and NVIDIA API (minimaxai/minimax-m3) as Fallback.
+ * Executes LLM completion using 3 Gemini API keys in a row (failover pipeline).
+ * If Key 1 fails, it immediately attempts Key 2, then Key 3.
  */
 async function callLLM(systemInstruction, payload, responseSchema, timeoutMs = 25000) {
-  let geminiErr = null;
+  const keys = getGeminiApiKeys();
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+  let lastError = null;
 
-  // 1. Primary Provider: Google Gemini (testing available models)
-  if (process.env.GEMINI_API_KEY) {
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+  if (keys.length === 0) {
+    throw new Error('No Gemini API keys configured (GEMINI_API_KEY_1, GEMINI_API_KEY_2, GEMINI_API_KEY_3).');
+  }
+
+  for (let keyIdx = 0; keyIdx < keys.length; keyIdx++) {
+    const apiKey = keys[keyIdx];
+    const keyLabel = `Key ${keyIdx + 1} (${apiKey.substring(0, 8)}...)`;
+
     for (const model of modelsToTry) {
       try {
-        console.log(`[AI Service] Calling Primary: Google Gemini (${model})...`);
-        const response = await withTimeout(ai.models.generateContent({
+        console.log(`[AI Service] Calling Gemini (${model}) via ${keyLabel}...`);
+        const aiClient = new GoogleGenAI({ apiKey });
+
+        const response = await withTimeout(aiClient.models.generateContent({
           model,
           contents: typeof payload === 'string' ? payload : JSON.stringify(payload),
           config: {
@@ -73,20 +61,14 @@ async function callLLM(systemInstruction, payload, responseSchema, timeoutMs = 2
         const text = response.text;
         return JSON.parse(text);
       } catch (err) {
-        geminiErr = err;
-        console.warn(`[AI Service] Google Gemini (${model}) failed:`, err.message);
+        lastError = err;
+        console.warn(`[AI Service] Gemini (${model}) failed via ${keyLabel}:`, err.message);
       }
     }
-    console.log('[AI Service] Gemini model attempts exhausted. Falling back to NVIDIA API (minimaxai/minimax-m3)...');
+    console.log(`[AI Service] All model attempts failed via ${keyLabel}. Failing over to next key...`);
   }
 
-  // 2. Fallback Provider: NVIDIA API (minimaxai/minimax-m3)
-  try {
-    return await callNvidiaFallback(systemInstruction, payload, 60000);
-  } catch (nvidiaErr) {
-    console.error('[AI Service] NVIDIA Fallback call failed:', nvidiaErr.response?.data || nvidiaErr.message);
-    throw new Error(`All AI providers failed. Gemini: ${geminiErr?.message || 'N/A'}. NVIDIA: ${nvidiaErr.message}`);
-  }
+  throw new Error(`All Gemini API keys failed. Last error: ${lastError?.message || 'Unknown'}`);
 }
 
 /**
