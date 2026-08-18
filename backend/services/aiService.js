@@ -1,4 +1,5 @@
 const { GoogleGenAI, Type } = require('@google/genai');
+const { callGroqLLM } = require('./groqService');
 
 const withTimeout = (promise, ms) => {
   let timeoutId;
@@ -26,8 +27,7 @@ function getGeminiApiKeys() {
 }
 
 /**
- * Executes LLM completion using 3 Gemini API keys in a row (failover pipeline).
- * If Key 1 fails, it immediately attempts Key 2, then Key 3.
+ * Executes LLM completion using configured Gemini API keys (failover pipeline).
  */
 async function callLLM(systemInstruction, payload, responseSchema, timeoutMs = 25000) {
   const keys = getGeminiApiKeys();
@@ -40,7 +40,8 @@ async function callLLM(systemInstruction, payload, responseSchema, timeoutMs = 2
 
   for (let keyIdx = 0; keyIdx < keys.length; keyIdx++) {
     const apiKey = keys[keyIdx];
-    const keyLabel = `Key ${keyIdx + 1} (${apiKey.substring(0, 8)}...)`;
+    const maskedKey = apiKey.length > 8 ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : '****';
+    const keyLabel = `Key ${keyIdx + 1} (${maskedKey})`;
 
     for (const model of modelsToTry) {
       try {
@@ -69,6 +70,47 @@ async function callLLM(systemInstruction, payload, responseSchema, timeoutMs = 2
   }
 
   throw new Error(`All Gemini API keys failed. Last error: ${lastError?.message || 'Unknown'}`);
+}
+
+/**
+ * Executes AI request trying Groq first (Primary), then Gemini (Fallback).
+ * Throws error if both Groq and Gemini fail so caller uses deterministic fallback.
+ */
+async function executeAIWithFallback(systemInstruction, payload, responseSchema, timeoutMs = 25000) {
+  let groqFailed = false;
+
+  console.log('[AI Service] Trying Groq (primary)...');
+  try {
+    const result = await callGroqLLM(systemInstruction, payload, responseSchema, timeoutMs);
+    console.log('[AI Service] Groq succeeded.');
+    console.log('[AI Service] provider = groq');
+    if (result && typeof result === 'object') {
+      result._provider = 'groq';
+    }
+    return result;
+  } catch (groqError) {
+    groqFailed = true;
+    console.warn('[AI Service] Groq failed. Falling back to Gemini...');
+  }
+
+  if (groqFailed) {
+    console.log('[AI Service] Trying Gemini...');
+    try {
+      const result = await callLLM(systemInstruction, payload, responseSchema, timeoutMs);
+      console.log('[AI Service] Gemini succeeded.');
+      console.log('[AI Service] provider = gemini');
+      if (result && typeof result === 'object') {
+        result._provider = 'gemini';
+      }
+      return result;
+    } catch (geminiError) {
+      console.warn('[AI Service] Groq failed.');
+      console.warn('[AI Service] Gemini failed.');
+      console.warn('[AI Service] Using deterministic fallback.');
+      console.log('[AI Service] provider = deterministic_fallback');
+      throw geminiError;
+    }
+  }
 }
 
 /**
@@ -110,7 +152,7 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const parsed = await callLLM(systemInstruction, payload, responseSchema, 25000);
+    const parsed = await executeAIWithFallback(systemInstruction, payload, responseSchema, 25000);
     if (typeof parsed.summary !== 'string') throw new Error('Invalid summary format');
     if (!Array.isArray(parsed.keyFindings)) throw new Error('Invalid keyFindings format');
     return parsed;
@@ -134,7 +176,8 @@ CRITICAL INSTRUCTIONS:
       recommendedActions: [
         "Schedule a formal review discussion with the relationship management team.",
         "Verify bank statement credits and collateral valuation metrics."
-      ]
+      ],
+      _provider: 'deterministic_fallback'
     };
   }
 }
@@ -171,12 +214,12 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const parsed = await callLLM(systemInstruction, payload, responseSchema, 25000);
+    const parsed = await executeAIWithFallback(systemInstruction, payload, responseSchema, 25000);
     if (!Array.isArray(parsed.customerSnapshot)) throw new Error('Invalid format');
     return parsed;
   } catch (error) {
     console.error('[G2] AI Request Failed, returning deterministic counselling prep fallback:', error.message);
-    const name = customerFacts?.name || 'Customer';
+    const name = customerFacts?.name || customerFacts?.customer?.name || 'Customer';
     return {
       customerSnapshot: [
         `Customer Name: ${name}`,
@@ -203,7 +246,8 @@ CRITICAL INSTRUCTIONS:
       potentialConcerns: [
         "High existing EMI obligations relative to monthly income.",
         "Pending document verification or CKYC status."
-      ]
+      ],
+      _provider: 'deterministic_fallback'
     };
   }
 }
@@ -239,7 +283,7 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const parsed = await callLLM(systemInstruction, payload, responseSchema, 25000);
+    const parsed = await executeAIWithFallback(systemInstruction, payload, responseSchema, 25000);
     if (typeof parsed.summary !== 'string') throw new Error('Invalid format');
     return parsed;
   } catch (error) {
@@ -260,7 +304,47 @@ CRITICAL INSTRUCTIONS:
       recommendedNextSteps: [
         "Review request with Credit Officer.",
         "Obtain updated income proofs."
-      ]
+      ],
+      _provider: 'deterministic_fallback'
+    };
+  }
+}
+
+/**
+ * Generates chatbot response with customer context.
+ */
+async function generateChatbotResponse(userQuestion, customerContext, systemInstruction = null) {
+  const defaultSystemInstruction = systemInstruction || `You are an expert Banking AI Assistant.
+You answer user questions based strictly on the provided customer CSV/database context and financial metrics.
+CRITICAL INSTRUCTIONS:
+- Do NOT invent financial values or customer details.
+- Use ONLY the provided context.
+- Produce concise, clear, and professional responses.
+- Respond in JSON format with "answer" and "keyPoints" properties.`;
+
+  const payload = {
+    userQuestion,
+    customerContext
+  };
+
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      answer: { type: Type.STRING },
+      keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["answer"]
+  };
+
+  try {
+    const parsed = await executeAIWithFallback(defaultSystemInstruction, payload, responseSchema, 25000);
+    return parsed;
+  } catch (error) {
+    console.error('[Chatbot] AI Request Failed, returning deterministic chatbot fallback:', error.message);
+    return {
+      answer: `Unable to process question via AI. Based on recorded context for ${customerContext?.name || customerContext?.customer?.name || 'the customer'}, please verify account details with relationship management.`,
+      keyPoints: ["Refer to customer 360 profile", "Check active loans and limits"],
+      _provider: 'deterministic_fallback'
     };
   }
 }
@@ -268,7 +352,7 @@ CRITICAL INSTRUCTIONS:
 module.exports = {
   generateCreditBrief,
   generateCounsellingPrep,
-  generateLimitIncreaseExplanation
+  generateLimitIncreaseExplanation,
+  generateChatbotResponse,
+  executeAIWithFallback
 };
-
-

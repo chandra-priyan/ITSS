@@ -1,7 +1,5 @@
 const { GoogleGenAI, Type } = require('@google/genai');
-const axios = require('axios');
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const { callGroqLLM } = require('./groqService');
 
 const withTimeout = (promise, ms) => {
   let timeoutId;
@@ -35,7 +33,8 @@ async function callLLM(systemInstruction, contents, responseSchema, timeoutMs = 
 
   for (let keyIdx = 0; keyIdx < keys.length; keyIdx++) {
     const apiKey = keys[keyIdx];
-    const keyLabel = `Key ${keyIdx + 1} (${apiKey.substring(0, 8)}...)`;
+    const maskedKey = apiKey.length > 8 ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : '****';
+    const keyLabel = `Key ${keyIdx + 1} (${maskedKey})`;
 
     for (const model of modelsToTry) {
       try {
@@ -72,12 +71,10 @@ async function callLLM(systemInstruction, contents, responseSchema, timeoutMs = 
  */
 function normalizeDate(dateStr) {
   if (!dateStr) return null;
-  // Handle already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
 
   let day, month, year;
 
-  // DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY
   const regexDDMMYYYY = /^(\d{2})[-/\.](\d{2})[-/\.](\d{4})$/;
   const matchDDMMYYYY = dateStr.match(regexDDMMYYYY);
   if (matchDDMMYYYY) {
@@ -85,14 +82,13 @@ function normalizeDate(dateStr) {
     month = parseInt(matchDDMMYYYY[2], 10);
     year = parseInt(matchDDMMYYYY[3], 10);
   } else {
-    // Try Month DD, YYYY or DD Month YYYY (simple approach via Date.parse, though might be tricky with non-US)
     const d = new Date(dateStr);
     if (!isNaN(d.getTime())) {
       year = d.getFullYear();
       month = d.getMonth() + 1;
       day = d.getDate();
     } else {
-      return null; // Cannot parse reliably
+      return null;
     }
   }
 
@@ -102,15 +98,51 @@ function normalizeDate(dateStr) {
 }
 
 /**
- * Extracts structured data and generates a summary from document text using Gemini.
+ * Executes Extraction request trying Groq first (Primary), then Gemini (Fallback).
+ */
+async function executeExtractionWithFallback(systemInstruction, text, responseSchema, timeoutMs = 55000) {
+  let groqFailed = false;
+
+  console.log('[Extraction Service] Trying Groq (primary)...');
+  try {
+    const result = await callGroqLLM(systemInstruction, text, responseSchema, timeoutMs);
+    console.log('[Extraction Service] Groq succeeded.');
+    console.log('[Extraction Service] provider = groq');
+    if (result && typeof result === 'object') {
+      result._provider = 'groq';
+    }
+    return result;
+  } catch (groqError) {
+    groqFailed = true;
+    console.warn('[Extraction Service] Groq failed. Falling back to Gemini...');
+  }
+
+  if (groqFailed) {
+    console.log('[Extraction Service] Trying Gemini...');
+    try {
+      const result = await callLLM(systemInstruction, text, responseSchema, timeoutMs);
+      console.log('[Extraction Service] Gemini succeeded.');
+      console.log('[Extraction Service] provider = gemini');
+      if (result && typeof result === 'object') {
+        result._provider = 'gemini';
+      }
+      return result;
+    } catch (geminiError) {
+      console.warn('[Extraction Service] Groq failed.');
+      console.warn('[Extraction Service] Gemini failed.');
+      console.warn('[Extraction Service] Using deterministic fallback.');
+      console.log('[Extraction Service] provider = deterministic_fallback');
+      throw geminiError;
+    }
+  }
+}
+
+/**
+ * Extracts structured data and generates a summary from document text using Groq primary & Gemini fallback.
  * @param {string} documentText - The text extracted from the document
  * @returns {Promise<Object>} { extractedData, summary }
  */
 async function extractDocumentData(documentText) {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is missing or invalid.');
-  }
-
   const systemInstruction = `You are a banking document information extraction engine.
 Your task is to summarize loan or KYC notes into structured bullets that an officer can scan quickly.
 
@@ -206,55 +238,55 @@ Rules:
 
   try {
     const text = `DOCUMENT TEXT:\n${documentText}`;
-    const parsed = await callLLM(systemInstruction, text, responseSchema, 55000);
-      if (!parsed.document_type || !parsed.summary) {
-        throw new Error('Missing structured sections');
-      }
+    const parsed = await executeExtractionWithFallback(systemInstruction, text, responseSchema, 55000);
+    if (!parsed.document_type || !parsed.summary) {
+      throw new Error('Missing structured sections');
+    }
 
-      // Backend Deterministic Normalization
-      let data = parsed;
-      
-      // Filter out nulls from customer and document_facts
-      if (data.customer) {
-        Object.keys(data.customer).forEach(key => {
-          if (data.customer[key] === null || data.customer[key] === undefined) {
-            delete data.customer[key];
-          }
-        });
-      }
-      
-      if (data.document_facts) {
-        Object.keys(data.document_facts).forEach(key => {
-          if (data.document_facts[key] === null || data.document_facts[key] === undefined) {
-            delete data.document_facts[key];
-          }
-        });
-      }
-      
-      // Date Normalization
-      if (data.customer && data.customer.date_of_birth) {
-        data.customer.date_of_birth = normalizeDate(data.customer.date_of_birth) || data.customer.date_of_birth;
-      }
+    // Backend Deterministic Normalization
+    let data = parsed;
+    
+    // Filter out nulls from customer and document_facts
+    if (data.customer) {
+      Object.keys(data.customer).forEach(key => {
+        if (data.customer[key] === null || data.customer[key] === undefined) {
+          delete data.customer[key];
+        }
+      });
+    }
+    
+    if (data.document_facts) {
+      Object.keys(data.document_facts).forEach(key => {
+        if (data.document_facts[key] === null || data.document_facts[key] === undefined) {
+          delete data.document_facts[key];
+        }
+      });
+    }
+    
+    // Date Normalization
+    if (data.customer && data.customer.date_of_birth) {
+      data.customer.date_of_birth = normalizeDate(data.customer.date_of_birth) || data.customer.date_of_birth;
+    }
 
-      if (data.dates) {
-        data.dates = data.dates
-          .map(d => {
-            const norm = normalizeDate(d.value);
-            if (!norm) return null;
-            return { label: d.label, value: norm };
-          })
-          .filter(Boolean);
-      }
+    if (data.dates) {
+      data.dates = data.dates
+        .map(d => {
+          const norm = normalizeDate(d.value);
+          if (!norm) return null;
+          return { label: d.label, value: norm };
+        })
+        .filter(Boolean);
+    }
 
-      // Calculate annual income if monthly income exists
-      if (data.customer && data.customer.monthly_income != null) {
-        data.annual_income = data.customer.monthly_income * 12;
-        data.annual_income_source = "derived_from_monthly_income";
-      } else {
-        data.annual_income_source = null;
-      }
+    // Calculate annual income if monthly income exists
+    if (data.customer && data.customer.monthly_income != null) {
+      data.annual_income = data.customer.monthly_income * 12;
+      data.annual_income_source = "derived_from_monthly_income";
+    } else {
+      data.annual_income_source = null;
+    }
 
-      return data;
+    return data;
   } catch (error) {
     console.error('LLM Extraction Failed:', error.message);
     console.log("[G3] Returning default fallback data for demo continuity.");
@@ -308,7 +340,8 @@ Rules:
       ],
       open_questions: [
         "When will CKYC verification and risk categorization be finalized?"
-      ]
+      ],
+      _provider: 'deterministic_fallback'
     };
   }
 }
