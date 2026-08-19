@@ -37,7 +37,7 @@ export default function Login({ onLogin }) {
           <div style={styles.brand}>
             <div style={styles.brandMark}>B</div>
             <div>
-              <div style={styles.brandName}>Bancking</div>
+              <div style={styles.brandName}>Banking</div>
               <div style={styles.brandSub}>AI Platform</div>
             </div>
           </div>

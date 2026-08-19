@@ -16,7 +16,7 @@ export default function Header({ user, onLogout }) {
         <div className="header-brand">
         <div className="brand-mark">B</div>
         <div>
-          <div className="brand-name">Bancking</div>
+          <div className="brand-name">Banking</div>
           <div className="brand-sub">AI</div>
         </div>
       </div>
